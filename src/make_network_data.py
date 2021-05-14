@@ -216,12 +216,6 @@ def make_patch(safe_file_list, mode='train'):
 
 
 
-
-
-
-
-
-
 if __name__ == '__main__':
 
     setup_logger()

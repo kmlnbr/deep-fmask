@@ -11,7 +11,6 @@ import argparse
 import cv2
 from rasterio import windows
 
-from utils.visualizer import plot_output
 from utils.dir_paths import EXP_DATA_PATH
 
 logger = logging.getLogger('__name__')
@@ -107,10 +106,6 @@ def join_files(h5_folder,output = None,exp=None):
                 # fmask[fmask == 0] = 5
                 mosaic_raster.write(fmask.astype(np.uint8), 1, window=wind)
 
-        pdf_out_path = os.path.join(EXP_DATA_PATH, exp, 'predictions',os.path.basename(parent)+'.png')
-        plot_output(prepare_true_color_plot(output),
-                    prepare_destination_plot(destination),pdf_out_path
-                    )
 
 
 if __name__ == '__main__':

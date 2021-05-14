@@ -1,5 +1,3 @@
-""" Experiment Class for managing various training experiments"""
-
 import os
 import shutil
 import logging
@@ -21,9 +19,11 @@ def fix_multi_gpu_model(state_dict):
 
 class Experiment:
     def __init__(self, args, mode='train', overwrite=True):
+
         self.name = args.exp_name
+        logger.info("Exp name = {}".format(self.name))
         self.mode = mode
-        folder_names = ['model', 'log', 'predictions']
+        folder_names = ['model', 'log', ]
         self.folder_paths = {
             folder_name: '../exp_data/{}/{}'.format(self.name, folder_name) for
             folder_name in folder_names
@@ -42,10 +42,12 @@ class Experiment:
                 'lr': args.learning_rate,
                 'n_epoch': args.num_epochs,
                 'stage': args.stage,
+                'full': args.full,
             }
             set_logfile_path(self.log_path, mode)
             logger.info('Train experiment stage {}'.format(args.stage))
             logger.info('Learning Rate {}'.format(args.learning_rate))
+            logger.info('Input data {} channels'.format(args.inp_mode))
         elif mode == 'predict':
             self.config = {
                 'name': args.exp_name,
@@ -76,9 +78,6 @@ class Experiment:
         self._make_folders()
 
     def get_trained_model_info(self):
-        """Reads the model file. If the model has been trained on multiple GPUs,
-        the loaded model data structure is modified to run on single GPU."""
-
         epoch = self.config['model_epoch']
         trained_model_path = os.path.join(self.model_folder,
                                           'model_{}.pth'.format(epoch))
@@ -93,6 +92,8 @@ class Experiment:
                 trained_model['model_state_dict'] = fix_multi_gpu_model(
                     trained_model['model_state_dict'])
                 break
+        if 'stage' in trained_model and self.mode == 'predict':
+            self.config['stage'] = trained_model['stage']
         logger.info('Model loaded:{}'.format(trained_model_path))
         return trained_model
 
@@ -111,3 +112,7 @@ class Experiment:
     @property
     def stage(self):
         return self.config['stage']
+
+    @property
+    def full(self):
+        return self.config['full']

@@ -20,8 +20,6 @@ def get_timestamp():
     return datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
 
-
-
 def delete_folder_contents(folder_path):
     """
     Deletes the contents of a folder but retains the parent folder.
@@ -73,70 +71,20 @@ class time_code:
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.timer.pause()
 
-
-def print_valinfo(epoch, avg_loss, avg_acc,avg_miou,avg_fmask_acc):
-    """Print the epoch wise validation stats in the log file. """
+def print_epoch_info(epoch, train_loss, train_acc, val_loss, val_acc, val_miou):
+    """
+    Print the epoch wise training and validation stats on the console.
+    """
     if epoch == 0:
-        msg = 'Epoch {} Validation: \tLoss {:.4f} [{:+.4f}] \t\tAccuracy {:6.2%} [{:+.2f}] ' \
-              '\t\tMIOU {:6.2%} [{:+.2f}] \t\tFMask_Acc {:6.2%} [{:+.2f}]'.format(epoch + 1,avg_loss, 0,
-                                                     avg_acc, 0,avg_miou,0,avg_fmask_acc,0)
-    else:
-        msg = 'Epoch {} Validation: \tLoss {:.4f} [{:+.4f}] \t\tAccuracy {:6.2%} [{:+.2f}] ' \
-              '\t\tMIOU {:6.2%} [{:+.2f}]\t\tFMask_Acc {:6.2%} [{:+.2f}]'.format(
-            epoch + 1,
-            avg_loss,
-            avg_loss - PREV[3],
-            avg_acc, 100 * (avg_acc -PREV[4]),
-            avg_miou, 100*(avg_miou-PREV[5]),
-            avg_fmask_acc, 100*(avg_fmask_acc-PREV[6]))
+        print('      {: ^18}\t{: ^26}'.format('Train','Validation'))
+        print('{:^6} {: ^6}  {: ^10}\t{: ^6}  {: ^10}  {: ^6}'.format('Epoch', 'Loss','Accuracy','Loss','Accuracy','mIoU'))
 
-    PREV[3:7] = avg_loss, avg_acc,avg_miou,avg_fmask_acc
+    msg = '{:^6} ' \
+          '{:^6.4f}  {:^10.2%}\t' \
+          '{:^6.4f}  {:^10.2%}  {:^6.2%}'.format(
+        epoch + 1, train_loss, train_acc,val_loss, val_acc,val_miou)
 
-
-    logger.info(msg)
-
-
-def print_traininfo(epoch, avg_loss, avg_acc,avg_miou):
-    """Print the epoch wise training stats in the log file """
-
-    if epoch == 0:
-        msg = 'Epoch {} Training  : \tLoss {:.4f} [{:+.4f}] \t\tAccuracy {:6.2%} [{:+.2f}] ' \
-              '\t\tMIOU {:6.2%} [{:+.2f}]'.format(epoch + 1,avg_loss, 0,
-                                                     avg_acc, 0,avg_miou,0)
-    else:
-        msg = 'Epoch {} Training  : \tLoss {:.4f} [{:+.4f}] \t\tAccuracy {:6.2%} [{:+.2f}] ' \
-              '\t\tMIOU {:6.2%} [{:+.2f}]'.format(
-            epoch + 1,
-            avg_loss,
-            avg_loss - PREV[0],
-            avg_acc, 100 * (avg_acc -PREV[1]),
-            avg_miou, 100*(avg_miou-PREV[2]))
-
-    PREV[0:3] = avg_loss, avg_acc,avg_miou
-
-
-    logger.info(msg)
-
-def print_class_accuracy(class_acc):
-    """Prints the Class accuracies into the log file"""
-
-    if len(PREV) == 7:
-        msg = 'Val Class Accuracy: \t{} {:6.2%} [{:+.2f}] \t{} {:6.2%} [{:+.2f}]' \
-              '\t{} {:6.2%} [{:+.2f}] \t{} {:6.2%} [{:+.2f}] \t{} {:6.2%} [{:+.2f}] \t{} {:6.2%} [{:+.2f}] ' .format(
-                                                     LABELS[0],class_acc[0], 0,LABELS[1],class_acc[1], 0,LABELS[2],class_acc[2], 0,LABELS[3],class_acc[3], 0,LABELS[4],class_acc[4], 0,
-                                                     LABELS[5],class_acc[5], 0,)
-    else:
-        msg = 'Val Class Accuracy: \t{} {:6.2%} [{:+.2f}] \t{} {:6.2%} [{:+.2f}]' \
-              '\t{} {:6.2%} [{:+.2f}] \t{} {:6.2%} [{:+.2f}] \t{} {:6.2%} [{:+.2f}] \t{} {:6.2%} [{:+.2f}] ' .format(LABELS[0],
-                                                     class_acc[0], 100 * (class_acc[0] -PREV[7]),LABELS[1],class_acc[1], 100 * (class_acc[1] -PREV[8]),LABELS[2],class_acc[2],
-                                                      100 * (class_acc[2] -PREV[9]),LABELS[3],class_acc[3], 100 * (class_acc[3] -PREV[10]),LABELS[4],class_acc[4], 100 * (class_acc[4] -PREV[11]),
-                                                     LABELS[5],class_acc[5], 100 * (class_acc[5] -PREV[12]),)
-
-    PREV[7:13] = class_acc
-    
-
-    logger.info(msg)
-
+    print(msg)
 
 
 def print_conf_matrix(confusion_matrix):
