@@ -1,10 +1,25 @@
+
+
+
+# Deep F-Mask for Cloud, Shadow and Snow detection in Sentinel 2 Imagery
+This repository contains the code based on the methods described in the paper 'Self-Trained Cloud, Cloud Shadow and Snow Masking Model
+for Sentinel-2 Images in Polar Regions'.
+
+Paper Link: 
+
+Contact: 
+
+---
 ### Install instruction
-- conda install rasterio tqdm
-- conda install matplotlib scikit-learn
-- conda install pytorch torchvision cudatoolkit=10.1 -c pytorch
-- conda install -c conda-forge opencv h5py
-- Install the Fmask4 from [GitHub]( https://github.com/GERSL/Fmask)
-- Install Sen2Cor 2.8 from [ESA STEP Website](http://step.esa.int/main/snap-supported-plugins/sen2cor/sen2cor_v2-8/).
+
+The code in this repository was developed for Python 3.6 on CentOS. 
+
+- We recommend using an Anaconda environment for managing the dependencies.
+```console 
+conda env create --name DFMask --file environment.yml
+``` 
+- [Optional: For Training/Comparision] Install the Fmask4 from the developer's [GitHub repository]( https://github.com/GERSL/Fmask).
+- [Optional: For Comparision] Install Sen2Cor 2.8 from [ESA STEP Website](http://step.esa.int/main/snap-supported-plugins/sen2cor/sen2cor_v2-8/).
 
 ### Dataset Setup
 - Go to the exp_data directory
@@ -25,7 +40,7 @@ python make_network_data.py --mode test
 ```
 
 
-
+---
 ### Training
 - In order to train an experiment called `exp1`
 
@@ -34,8 +49,50 @@ python make_network_data.py --mode test
 ```
 
 
-### Test
+### Evaluation
 - In order to test a trained model in exp1
 ```console
-python predict.py -e exp1_stage3 -p /home/nambiar/Downloads/DATA_NO_BACKUP/new_s2/PREDICT/P1
+python predict.py -e exp1_stage3 -p /path/containing/SAFE/files/
 ```
+
+---
+### Directory Structure
+```bash
+├── exp_data
+│   ├── exp1_stage3
+│   │   ├── log
+│   │   └── model
+│   ├── TEST
+│   ├── TRAIN
+│   ├── TRAIN_H5
+│   ├── VALIDATION
+│   └── VALIDATION_H5
+└── src
+    ├── data_gen.py
+    ├── dataset
+    │   ├── __init__.py
+    │   ├── patch_dataset.py
+    │   └── transforms.py
+    ├── __init__.py
+    ├── main.py
+    ├── make_network_data.py
+    ├── network
+    │   ├── __init__.py
+    │   ├── model.py
+    │   └── unet.py
+    ├── predict.py
+    ├── train.py
+    └── utils
+        ├── csv_logger.py
+        ├── dataset_stats.py
+        ├── dir_paths.py
+        ├── experiment.py
+        ├── __init__.py
+        ├── join_h5_pred.py
+        ├── make_network_data_pred.py
+        ├── metrics.py
+        ├── MFB.py
+        ├── script_utils.py
+        └── visualizer.py
+```
+
