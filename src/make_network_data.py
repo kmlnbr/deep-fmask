@@ -1,3 +1,8 @@
+"""
+This script is used to split the Sentinel-2 scene into multiple sub-scenes stored as h5 files
+containing the 13 spectral bands as well as the labels (when available).
+"""
+
 import argparse
 import glob
 import logging
@@ -12,6 +17,7 @@ import rasterio
 from utils.dir_paths import TRAIN_SAFE_PATH, VALID_SAFE_PATH
 from utils.dataset_stats import save_stats
 
+# Logging
 logger = logging.getLogger('__name__')
 
 

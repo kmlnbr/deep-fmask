@@ -1,3 +1,9 @@
+"""
+This script is used to make prediction from the trained model. The script processes multiple
+sub-scenes stored as h5 files and the predictions from each sub-scene (h5 file) is stitched together to
+generate the full scene prediction in 20m resolution. 
+"""
+
 import argparse
 import logging
 import os
@@ -24,7 +30,7 @@ logger = logging.getLogger('predict_script')
 def get_args(argv=None):
     """Parses the arguments entered by the user."""
 
-    parser = argparse.ArgumentParser(description="Cloud Detection Prediction Script")
+    parser = argparse.ArgumentParser(description="Prediction Script")
     parser.add_argument('-e', '--exp_name', help='Name of experiment')
     # Network
     parser.add_argument('-bs', '--batch_size', type=int, default=10,

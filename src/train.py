@@ -1,3 +1,7 @@
+"""
+This script is used to train the network at each stage of the self-training framework.
+"""
+
 import argparse
 import logging
 import os
@@ -17,7 +21,7 @@ logger = logging.getLogger('train_script')
 def get_args(argv=None):
     """Parses the arguments entered by the user."""
 
-    parser = argparse.ArgumentParser(description="Cloud Detection Training Script")
+    parser = argparse.ArgumentParser(description="Training Script")
     parser.add_argument('-e', '--exp_name', help='Name of experiment')
     # Network
     parser.add_argument('-bs', '--batch_size', type=int, default=32,
