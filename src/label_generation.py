@@ -41,8 +41,8 @@ if __name__ == '__main__':
     exp = Experiment(args,mode='label_gen')
 
     # Initialize the dataloader for the label generation step.
-    test_loader = setup_data(1, args.batch_size, 'label_gen',
-                             exp=exp,stage=args.stage,
+    test_loader = setup_data(args.batch_size, 'label_gen',
+                             stage=args.stage,
                              path = TRAIN_PATH)
 
     # Initialize model for evaluation

@@ -48,10 +48,9 @@ def check_data_split(train_path, reset=False):
     return False
 
 
-def setup_data(n_files=1, batch_size=1, mode='train', exp=None, stage=0, path=None,
+def setup_data(batch_size=1, mode='train', stage=0, path=None,
                full=False, aug=False,
                reset=False, stage_0_ratio=0.1):
-    files_list = []
     datasets = []
     shuffle = False
 
@@ -68,7 +67,7 @@ def setup_data(n_files=1, batch_size=1, mode='train', exp=None, stage=0, path=No
             with open(file_path, 'r') as fl:
                 files_list = [line.rstrip() for line in fl.readlines()]
                 datasets.append(
-                    PatchDataset(n_files, mode, file_list=files_list, stage=0,
+                    PatchDataset(mode, file_list=files_list, stage=0,
                                  aug=aug))
             logger.info(
                 "Total stage full train set size: {}".format(len(files_list)))
@@ -85,7 +84,7 @@ def setup_data(n_files=1, batch_size=1, mode='train', exp=None, stage=0, path=No
                         stage_aug = aug
 
                     datasets.append(
-                        PatchDataset(n_files, mode, file_list=files_list, stage=i,
+                        PatchDataset(mode, file_list=files_list, stage=i,
                                      aug=stage_aug))
                 logger.info(
                     "Total stage {} train set size: {}".format(i, len(files_list)))
@@ -96,7 +95,7 @@ def setup_data(n_files=1, batch_size=1, mode='train', exp=None, stage=0, path=No
             with open(file_path, 'r') as fl:
                 files_list = [line.rstrip() for line in fl.readlines()]
                 datasets.append(
-                    PatchDataset(len(files_list), mode, file_list=files_list,
+                    PatchDataset(mode, file_list=files_list,
                                  stage=i, aug=aug))
 
     else:
@@ -104,7 +103,7 @@ def setup_data(n_files=1, batch_size=1, mode='train', exp=None, stage=0, path=No
         if not len(files_list):
             raise FileNotFoundError('H5 files not found')
         datasets.append(
-            PatchDataset(len(files_list), mode, file_list=files_list, stage=stage,
+            PatchDataset(mode, file_list=files_list, stage=stage,
                          aug=aug))
     concat_dataset = ConcatDataset(datasets)
     dataloader = torch.utils.data.DataLoader(dataset=concat_dataset,
@@ -177,28 +176,15 @@ class PatchDataset(Dataset):
     Loads the saved sub-scenes of satellite images.
     """
 
-    def __init__(self, size, mode, file_list, stage=0, aug=False):
+    def __init__(self, mode, file_list, stage=0, aug=False):
 
-        self.size = size
         self.mode = mode
 
         self.stage = stage
         self.file_list = file_list
-
-        if mode == 'train':
-            if stage == 0:
-                # multiplier = 2
-                multiplier = 1
-                if aug:
-                    multiplier = 1
-            else:
-                multiplier = 1
-
-            self.file_list = self.file_list * multiplier
+        self.size = len(self.file_list)
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-        self.size = min(len(self.file_list), self.size)
 
         self.transforms = None
         if mode == 'train':
