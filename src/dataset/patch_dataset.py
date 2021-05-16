@@ -50,7 +50,7 @@ def check_data_split(train_path, reset=False):
 
 def setup_data(batch_size=1, mode='train', stage=0, path=None,
                full=False, aug=False,
-               reset=False, stage_0_ratio=0.1):
+               reset=False):
     datasets = []
     shuffle = False
 
@@ -60,7 +60,7 @@ def setup_data(batch_size=1, mode='train', stage=0, path=None,
                 "Stage data reset can be done only in stage 0. Setting reset_stage_data flag to False")
             reset = False
         if not check_data_split(path, reset=reset):
-            split_data(path, stage_0_ratio)
+            split_data(path)
         shuffle = True
         if full:
             file_path = os.path.join(path, 'stage_full.txt')
@@ -113,7 +113,7 @@ def setup_data(batch_size=1, mode='train', stage=0, path=None,
     return dataloader
 
 
-def split_data(h5_folder, stage_0_ratio, stages=4):
+def split_data(h5_folder, stage_0_ratio=0.25, stages=4):
     h5_folder = os.path.abspath(h5_folder)
     file_list = glob.glob(os.path.join(h5_folder, '*.h5'))
     n_files = len(file_list)
