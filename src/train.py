@@ -4,14 +4,12 @@ This script is used to train the network at each stage of the self-training fram
 
 import argparse
 import logging
-import os
 
 from tqdm import tqdm
 
 from dataset.patch_dataset import setup_data,get_MFB_weights,set_seed
 from network.model import Model
 from utils.experiment import Experiment
-
 from utils.dir_paths import TRAIN_PATH,VALID_PATH
 
 # Logging
@@ -26,7 +24,7 @@ def get_args(argv=None):
     # Network
     parser.add_argument('-bs', '--batch_size', type=int, default=32,
                         help='Batch size for each step of training')
-    parser.add_argument('-ep', '--num_epochs', type=int, default=200,
+    parser.add_argument('-ep', '--num_epochs', type=int, default=400,
                         help='Number of training epochs')
     parser.add_argument('-st', '--stage', type=int, default=0,
                         help='Training stage')
@@ -35,7 +33,8 @@ def get_args(argv=None):
     parser.add_argument('-fc', '--file_count', type=int, default=5000,
                         help='File Count in each stage')
     parser.add_argument('--full',  dest='full', action='store_true', default=False,
-                        help='File Count in each stage')
+                        help='Train the largest network in the pipeline using the whole data on '
+                             'the F-Mask labels, i.e., supervised learning using F-Mask labels')
 
     parser.add_argument('--no_dropout',  dest='dropout', action='store_false', default=True,
                         help='Flag used to avoid dropout usage during training')
@@ -52,19 +51,20 @@ def get_args(argv=None):
     parser.add_argument('-ip', '--inp_mode', default='all',
                         help='Input mode')
     parser.add_argument('--seed', type=int, default=None,
-                        help='Random seed.')
+                        help='Random seed')
     return parser.parse_args(argv)
 
 
 
 
 if __name__ == '__main__':
+
+    # Read arguments and initialize the training experiment
     args = get_args()
     exp = Experiment(args)
     set_seed(args.seed)
-    # split_train_data(n_iterations=2, initial_size=1500,experiment=exp)
 
-
+    # Initialize the dataloader for the train and validation step.
     files_per_stage = int(5e8)
     train_loader = setup_data(files_per_stage, args.batch_size, 'train',
                               exp,stage=args.stage,path = TRAIN_PATH,
@@ -72,42 +72,41 @@ if __name__ == '__main__':
                               reset = args.reset_stage_data,
                               stage_0_ratio=args.stage_0_ratio)
 
-    if 'lms37-22' in os.uname()[1]:
-        test_batch = 4
-    else:
-        test_batch = 1
+    test_loader = setup_data(1, 1, 'test',path = VALID_PATH)
 
-    test_loader = setup_data(1, test_batch, 'test',path = VALID_PATH) # Max 498
-
+    # Initial the model
     model = Model(exp, full = args.full, dropout=args.dropout, inp_mode=args.inp_mode)
+
+    # Get the weights for the loss functions using the median frequency balancing method
     exp.weights = get_MFB_weights(train_loader)
-
-
 
     for epoch in range(args.num_epochs):
         logger.info('Epoch - {}'.format(epoch + 1))
+        ## Train step
         model.network.train()
         loader_itr_train = tqdm(train_loader,
                                 total=int(len(train_loader)),
                                 leave=False,
-                                desc='Train Epoch {}'.format(epoch + 1))
+                                desc='Train Epoch {}'.format(epoch + 1)) # Progress bars
 
         for batch, network_input in enumerate(loader_itr_train):
-
-
             model.train_step(network_input)
 
+        ## Validation step
         loader_itr = tqdm(test_loader,
                           total=int(len(test_loader)),
                           leave=False,
-                          desc='Valid Epoch {}'.format(epoch + 1))
+                          desc='Valid Epoch {}'.format(epoch + 1)) # Progress bars
         model.network.eval()
-
 
         for batch, network_input in enumerate(loader_itr):
             model.valid_step(network_input)
+
+        # Check if validation metrics satisfy early stopping condition and reset
+        # metrics for next epoch
         early_stop_flag = model.refresh_stats()
         if early_stop_flag:
             break
+
     model.save_best_model()
 

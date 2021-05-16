@@ -1,10 +1,13 @@
-"""This script is used to perform the pseudo label generation from a trained model"""
+"""
+This script is used to perform the pseudo label generation from a trained model. These labels
+will be used for training the model in the subsequent stage of the self-training pipeline.
+"""
 
 import argparse
 import logging
-import os
 
 from tqdm import tqdm
+
 # Logging
 logger = logging.getLogger('Data Labelling Script')
 
@@ -20,36 +23,42 @@ def get_args(argv=None):
     parser = argparse.ArgumentParser(description="Data Labelling Script")
     parser.add_argument('-e', '--exp_name', help='Name of experiment')
     # Network
-    parser.add_argument('-bs', '--batch_size', type=int, default=1,
-                        help='Batch size for each step of training')
+    parser.add_argument('-bs', '--batch_size', type=int, default=1,help='Batch size')
     parser.add_argument('-st', '--stage', type=int, default=1,
                         help='Training stage for which labelling is done')
     parser.add_argument('-ep', '--model_epoch', type=int, default=0,
-                        help='Epoch of the trained model (Starting from 1). '
-                             'Defaults to best model')
+                        help='Epoch of the trained model to be used for label generation. '
+                             'Note: Epochs indexing starts from 1 and the default value (0) '
+                             'corresponds to the best model')
 
     return parser.parse_args(argv)
 
 
 if __name__ == '__main__':
-    args = get_args()
-    exp = Experiment(args,mode='data_gen')
 
-    print('\n')
-    test_loader = setup_data(1, args.batch_size, 'data_gen',
+    # Read arguments and initialize the training experiment
+    args = get_args()
+    exp = Experiment(args,mode='label_gen')
+
+    # Initialize the dataloader for the label generation step.
+    test_loader = setup_data(1, args.batch_size, 'label_gen',
                              exp=exp,stage=args.stage,
                              path = TRAIN_PATH)
 
+    # Initialize model for evaluation
     model = Model(exp)
-
-
     model.network.eval()
+
     loader_itr = tqdm(test_loader,
                       total=int(len(test_loader)),
                       leave=False,
-                      desc='New Label Generation')
+                      desc='New Label Generation') # Progress bars
+
+    # Label generation step
     for batch, network_input in enumerate(loader_itr):
-        model.valid_step(network_input,mode='data_gen')
+        model.valid_step(network_input,mode='label_gen')
+
+    # Store the frequency of each class for calculating loss function weights in next stage.
     model.write_stage_stats()
     logger.info('New Data generation Complete')
 

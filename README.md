@@ -10,7 +10,7 @@ Paper Link:
 Contact: 
 
 ---
-### Install instruction
+### Install instructions
 
 The code in this repository was developed for Python 3.6 on CentOS. 
 
@@ -68,13 +68,12 @@ python predict.py -e exp1_stage3 -p /path/containing/SAFE/files/
 │   ├── VALIDATION
 │   └── VALIDATION_H5
 └── src
-    ├── data_gen.py
+    ├── label_generation.py
     ├── dataset
     │   ├── __init__.py
     │   ├── patch_dataset.py
     │   └── transforms.py
     ├── __init__.py
-    ├── main.py
     ├── make_network_data.py
     ├── network
     │   ├── __init__.py

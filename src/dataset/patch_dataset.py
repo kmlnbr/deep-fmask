@@ -90,7 +90,7 @@ def setup_data(n_files=1, batch_size=1, mode='train', exp=None, stage=0, path=No
                 logger.info(
                     "Total stage {} train set size: {}".format(i, len(files_list)))
 
-    elif mode == 'data_gen':
+    elif mode == 'label_gen':
         for i in range(1, stage + 1):
             file_path = os.path.join(path, 'stage_{}.txt'.format(i))
             with open(file_path, 'r') as fl:

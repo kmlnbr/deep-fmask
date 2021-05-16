@@ -27,9 +27,9 @@ python train.py -e ${EXP_NAME}_stage0 -bs ${BATCH_SIZE} -st 0 -lr ${LR[0]}
 for i in {1..3}
 do
 echo -e "\n\n"
-echo $(date) Generate Data for stage $i using model trained in previous stage
-echo python data_gen.py -e ${EXP_NAME}_stage$((i-1)) -st ${i}
-python data_gen.py -e ${EXP_NAME}_stage$((i-1)) -st ${i}
+echo $(date) Generate new labels for stage $i using model trained in previous stage
+echo python label_generation.py -e ${EXP_NAME}_stage$((i-1)) -st ${i}
+python label_generation.py -e ${EXP_NAME}_stage$((i-1)) -st ${i}
 
 echo -e "\n"
 echo $(date) Stage $i : Train model

@@ -56,7 +56,8 @@ class Experiment:
             }
             set_logfile_path(self.log_path, mode)
             logger.info('Prediction Experiment {}'.format(args.exp_name))
-        elif mode == 'data_gen':
+
+        elif mode == 'label_gen':
             self.config = {
                 'name': args.exp_name,
                 'model_epoch': args.model_epoch,

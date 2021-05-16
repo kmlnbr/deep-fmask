@@ -7,7 +7,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.nn import DataParallel
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
 from dataset.network_input import get_inp_func, get_inp_channels
@@ -25,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 ####################################################################################
 # SELF-TRAINING OPTIONS
-# The number of start filters and the depth of the network at each stage is set
+# The number of start filters and the depth of the network at each stage is selected
 # using the two lists given below:
 
 filter_options = [16, 32, 24, 32]
@@ -55,7 +54,7 @@ class Model:
         self.inp_func = get_inp_func(inp_mode)
         n_inp_channels = get_inp_channels(inp_mode)
 
-        if experiment.mode == 'data_gen':
+        if experiment.mode == 'label_gen':
             i = -1
         else:
             i = 0
@@ -80,7 +79,6 @@ class Model:
                                             device_ids=[0, 1, 2, 3, 4, 5, 6])
             self.optim = torch.optim.Adam(self.network.parameters(), lr=self.exp.lr,
                                           weight_decay=0.00001)
-            self.scheduler = ReduceLROnPlateau(self.optim, 'max',patience=3,factor=0.5)
 
             self.epoch = 0
 
@@ -95,7 +93,7 @@ class Model:
             trained_model = self.exp.get_trained_model_info()
             self.network.load_state_dict(trained_model['model_state_dict'])
 
-            if experiment.mode == 'data_gen':
+            if experiment.mode == 'label_gen':
                 self.stage_freq_data = []
 
     def forward_step(self, input_img):
@@ -125,9 +123,9 @@ class Model:
         if mode == 'train':
             labels = labels[:, 0, :, :]
 
-        elif mode == 'data_gen':
+        elif mode == 'label_gen':
             self.generate_train_data(filenames,
-                                     self.encode_label(output, datagen=True))
+                                     self.encode_label(output, label_gen=True))
             return 0
 
         elif mode == 'test':  # Fmask and labels are expected
@@ -140,7 +138,7 @@ class Model:
                 labels = labels[:, 0, :, :]
         elif mode == 'predict':
             self.generate_train_data(filenames, self.encode_label(output),
-                                     datagen=False)
+                                     label_gen=False)
             return 0
         loss = self.get_loss(output, labels, mode, fmask)
 
@@ -201,24 +199,22 @@ class Model:
         self.metrics.reset_metrics()
         self.epoch += 1
         self.save()
-        self.scheduler.step(valid_metrics[1])
-        logger.info('New Learning Rate : {}'.format(self.optim.param_groups[0]['lr']))
 
         return self.check_early_stop()
 
     @staticmethod
-    def encode_label(out, datagen=False, threshold=0.4):
+    def encode_label(out, label_gen=False, threshold=0.4):
         """
         Converts the softmax input into pixelwise class predictions.
 
-        In case of new data generation (i.e. datagen=True), prediction are stored
+        In case of new data generation (i.e. label_gen=True), prediction are stored
         only pixel positions where the prediction confidence is greater than the
         threshold, otherwise it is set to 0.
         """
 
         softmax_out = F.softmax(out, dim=1)
         predicted_labels = torch.argmax(softmax_out, dim=1)
-        if datagen:
+        if label_gen:
             prob = torch.max(softmax_out, dim=1)[0]
             predicted_labels[prob < threshold] = 0
         return predicted_labels
@@ -258,19 +254,18 @@ class Model:
         copyfile(save_path_src, save_path_dst)
         print_val_csv_metrics(best_epoch + 1, self.exp.log_path)
 
-    def generate_train_data(self, filenames, labels, datagen=True):
+    def generate_train_data(self, filenames, labels, label_gen=True):
         """
         Saves the results of model prediction to file for training later or
-        final prediction datagen is set to false to use the h5 later for joining
+        final prediction label_gen is set to false to use the h5 later for joining
         and prediction.
         """
         for label, filename in zip(labels, filenames):
             label_np = label.cpu().numpy().astype(np.uint16)
-            # if not datagen:
             label_np = label_np[1:-1, 1:-1]
             with h5py.File(filename, "r") as hf:
                 data = hf.get('data')[:]
-                if datagen:
+                if label_gen:
                     fmask = data[:, :, 13]
                     # label_np[label_np == 0] = fmask[label_np == 0]
                     label_np[fmask == 0] = 0  # when fmask label = 0 i.e no data
