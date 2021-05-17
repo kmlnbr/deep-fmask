@@ -161,8 +161,7 @@ def get_MFB_weights(trainloader):
 
     freq_median = np.median(freq)
     weight = np.divide(freq_median, freq, out=np.zeros_like(freq), where=freq > 1e-5)
-    weight[0] = 0  # For the none class
-    # logger.info('MFB Weights {}'.format(weight))
+    weight[0] = 0  # For the no-data class
     logger.info('Class Weights {}'.format(weight))
     return weight
 

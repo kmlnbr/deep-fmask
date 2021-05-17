@@ -312,7 +312,7 @@ class Model:
     def write_stage_stats(self):
         label_stats_file = os.path.join(TRAIN_PATH,
                                         'label_stats_stage{}.csv'.format(
-                                            self.exp.config['stage']))
+                                            self.exp.config['stage']+1))
         with open(label_stats_file, 'w') as f:
             f.write("FILENAME,NONE_F,CLEAR_F,CLOUD_F,SHADOW_F,ICE_F,WATER_F\n")
             for i in self.stage_freq_data:
