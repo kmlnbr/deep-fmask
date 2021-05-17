@@ -7,10 +7,11 @@ import logging
 
 from tqdm import tqdm
 
-from dataset.patch_dataset import setup_data, get_MFB_weights, set_seed
+from dataset.patch_dataset import setup_data, set_seed
 from network.model import Model
-from utils.experiment import Experiment
+from utils.MFB import get_MFB_weights
 from utils.dir_paths import TRAIN_PATH, VALID_PATH
+from utils.experiment import Experiment
 
 # Logging
 logger = logging.getLogger('train_script')

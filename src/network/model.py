@@ -9,14 +9,11 @@ import torch.nn.functional as F
 from torch.nn import DataParallel
 
 from dataset.network_input import get_inp_func, get_inp_channels
-
 from network.unet import UNet
 from utils.MFB import calculate_file_freq
 from utils.csv_logger import print_val_csv_metrics, make_overall_statistics_csv
 from utils.dir_paths import TRAIN_PATH
-from utils.metrics import calculate_accuracy, calculate_confusion_matrix
-
-from utils.metrics import Metrics
+from utils.metrics import calculate_accuracy, calculate_confusion_matrix, Metrics
 
 logger = logging.getLogger(__name__)
 

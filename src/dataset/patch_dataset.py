@@ -9,7 +9,7 @@ import torch
 from torch.utils.data import Dataset, ConcatDataset
 from torchvision.transforms import Compose
 
-from utils.MFB import calculate_MFB_stage
+
 from dataset.transforms import VerticalFlip, HorizontalFlip, Rotate90, CutOut, ZoomIn
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ WORKERS = 16
 
 
 def set_seed(user_seed):
-    # To ensure reproducibility
+    # Set the seed used in random number generators to ensure reproducibility
     if user_seed:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
@@ -34,6 +34,11 @@ def set_seed(user_seed):
 
 
 def check_data_split(train_path, reset=False):
+    """Checks if h5 files have been already assigned to different stages. This
+    is done by checking if a file named stage_1.txt, stage_2.txt, etc exists.
+    If reset flag is true, then these files are deleted so that they can be
+    generated again resulting in a new set of files for each stage.
+    """
     file_list = glob.glob(os.path.join(train_path, 'stage_*.txt'))
     if file_list:
         if reset:
@@ -47,6 +52,7 @@ def check_data_split(train_path, reset=False):
 def setup_data(batch_size=1, mode='train', stage=0, path=None,
                full=False, aug=False,
                reset=False):
+    """Setups up the dataloaders for each stage of the pipeline"""
     datasets = []
     shuffle = False
 
@@ -110,6 +116,10 @@ def setup_data(batch_size=1, mode='train', stage=0, path=None,
 
 
 def split_data(h5_folder, stage_0_ratio=0.25, stages=4):
+    """Assigns a set of h5 files that are to be used in each stage of the pipeline.
+    These filenames are stored in the train path in a text file named as stage_1.txt,
+    stage_2.txt, etc."""
+
     h5_folder = os.path.abspath(h5_folder)
     file_list = glob.glob(os.path.join(h5_folder, '*.h5'))
     n_files = len(file_list)
@@ -140,35 +150,12 @@ def split_data(h5_folder, stage_0_ratio=0.25, stages=4):
         start = end
 
 
-def get_MFB_weights(trainloader):
-    freq = np.zeros((6))
 
-    file_count = 0
-    for dataset in trainloader.dataset.datasets:
-        file_list = dataset.file_list[:dataset.size]
-        stage = dataset.stage
-
-        stage_freq, stage_counter = calculate_MFB_stage(file_list, stage)
-
-        file_count += stage_counter
-        logger.info(
-            'Stage {} freq {}'.format(stage, 100 * stage_freq / stage_counter))
-        freq += stage_freq
-
-    freq = freq / file_count
-
-    logger.info('Total freq {}'.format(100 * freq))
-
-    freq_median = np.median(freq)
-    weight = np.divide(freq_median, freq, out=np.zeros_like(freq), where=freq > 1e-5)
-    weight[0] = 0  # For the no-data class
-    logger.info('Class Weights {}'.format(weight))
-    return weight
 
 
 class PatchDataset(Dataset):
     """
-    Loads the saved sub-scenes of satellite images.
+    Loads the saved sub-scenes of satellite images from the h5 files.
     """
 
     def __init__(self, mode, file_list, stage=0, aug=False):
@@ -189,7 +176,6 @@ class PatchDataset(Dataset):
                                            ZoomIn(),
                                            Rotate90(),
                                            CutOut(),
-
                                            ])
             logger.info("Stage {} augmentation flag set to {}".format(stage, aug))
 
