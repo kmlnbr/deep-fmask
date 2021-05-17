@@ -22,7 +22,6 @@ from utils.metrics import get_full_stats, get_metrics
 from utils.join_h5_pred import join_files
 from utils.csv_logger import pred_csv
 
-
 # Logging
 logger = logging.getLogger('predict_script')
 
@@ -42,13 +41,15 @@ def get_args(argv=None):
                         help='Training stage')
     parser.add_argument('-p', '--pred_path', help='folder containing safe file',
                         default=PRED_PATH)
-
-    parser.add_argument('--full',  dest='full', action='store_true', default=False,
+    parser.add_argument('--full', dest='full', action='store_true', default=False,
                         help='Run full network (last stage)')
-    parser.add_argument('--just_stats',dest='run', action='store_false', default=True,
+    parser.add_argument('--just_stats', dest='run', action='store_false',
+                        default=True,
                         help='Just print stats without running again')
 
-
+    # Hardware
+    parser.add_argument('-gpu', '--gpu_id', type=int, nargs='+', default=[0],
+                        help='ID of the GPUs used for training. Ex: -gpu 0 3')
 
     return parser.parse_args(argv)
 
@@ -59,7 +60,7 @@ if __name__ == '__main__':
     trained_model = exp.get_trained_model_info()
     if "inp_mode" in trained_model:
         inp_mode = trained_model["inp_mode"]
-        if inp_mode=="novegndwi": inp_mode="nonvegndwi"
+        if inp_mode == "novegndwi": inp_mode = "nonvegndwi"
     else:
         inp_mode = 'all'
     if "full" in trained_model:
@@ -67,8 +68,7 @@ if __name__ == '__main__':
     else:
         full = args.full
 
-
-    model = Model(exp, full=full, inp_mode=inp_mode)
+    model = Model(exp, full=full, gpu_id=args.gpu_id)
     model.network.eval()
     args.pred_path = os.path.abspath(args.pred_path)
 
@@ -89,7 +89,7 @@ if __name__ == '__main__':
             loader_itr = tqdm(test_loader,
                               total=int(len(test_loader)),
                               leave=False,
-                              desc='Predict {}/{}'.format(file_idx+1, file_count))
+                              desc='Predict {}/{}'.format(file_idx + 1, file_count))
 
             for batch, network_input in enumerate(loader_itr):
                 model.valid_step(network_input, mode='predict')
@@ -99,7 +99,6 @@ if __name__ == '__main__':
             img_path = os.path.dirname(output_folder[0]) if output_folder else None
 
             join_files(H5_folder, output=img_path, exp=args.exp_name)
-
 
     np.set_printoptions(suppress=True, precision=3)
 
@@ -118,13 +117,12 @@ if __name__ == '__main__':
     for matrix in [CONF_FMASK_FULL, CONF_SEN2COR_FULL, CONF_PRED_FULL]:
         metrics.append(get_metrics(matrix))
 
-
-    print('Accuracy'.ljust(10)+'\t\t FMask {:6.4}\t Sen2Cor {:6.4}\t OurModel {:6.4}'.format(
+    print('Accuracy'.ljust(
+        10) + '\t\t FMask {:6.4}\t Sen2Cor {:6.4}\t OurModel {:6.4}'.format(
         metrics[0]['acc'], metrics[1]['acc'], metrics[2]['acc']))
-    print('mIOU'.ljust(10)+'\t\t FMask {:6.4}\t Sen2Cor {:6.4}\t OurModel {:6.4}'.format(
+    print('mIOU'.ljust(
+        10) + '\t\t FMask {:6.4}\t Sen2Cor {:6.4}\t OurModel {:6.4}'.format(
         metrics[0]['mIOU'], metrics[1]['mIOU'], metrics[2]['mIOU']))
     print('+' * 75)
 
     pred_csv(metrics)
-
-

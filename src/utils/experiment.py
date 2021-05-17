@@ -43,6 +43,7 @@ class Experiment:
                 'n_epoch': args.num_epochs,
                 'stage': args.stage,
                 'full': args.full,
+                'inp_mode': args.inp_mode
             }
             set_logfile_path(self.log_path, mode)
             logger.info('Train experiment stage {}'.format(args.stage))
@@ -56,6 +57,7 @@ class Experiment:
             }
             set_logfile_path(self.log_path, mode)
             logger.info('Prediction Experiment {}'.format(args.exp_name))
+            self.get_trained_model_info()
 
         elif mode == 'label_gen':
             self.config = {
@@ -65,6 +67,7 @@ class Experiment:
             }
             set_logfile_path(self.log_path, 'data-gen')
             logger.info('Data Relabelling experiment')
+            self.get_trained_model_info()
 
     def _make_folders(self):
         """Creates new experiment folders if they don't already exist."""
@@ -79,6 +82,7 @@ class Experiment:
         self._make_folders()
 
     def get_trained_model_info(self):
+        """Load the model using the model_epoch arguement"""
         epoch = self.config['model_epoch']
         trained_model_path = os.path.join(self.model_folder,
                                           'model_{}.pth'.format(epoch))
@@ -88,13 +92,9 @@ class Experiment:
                 'model_best.pth')
 
         trained_model = torch.load(trained_model_path)
-        for param_tensor in trained_model['model_state_dict']:
-            if param_tensor.startswith('module.'):
-                trained_model['model_state_dict'] = fix_multi_gpu_model(
-                    trained_model['model_state_dict'])
-                break
-        if 'stage' in trained_model and self.mode == 'predict':
+        if self.mode != 'train':
             self.config['stage'] = trained_model['stage']
+            self.config['inp_mode'] = trained_model['inp_mode']
         logger.info('Model loaded:{}'.format(trained_model_path))
         return trained_model
 
@@ -117,3 +117,7 @@ class Experiment:
     @property
     def full(self):
         return self.config['full']
+
+    @property
+    def inp_mode(self):
+        return self.config['inp_mode']

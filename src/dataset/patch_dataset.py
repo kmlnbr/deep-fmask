@@ -9,7 +9,6 @@ import torch
 from torch.utils.data import Dataset, ConcatDataset
 from torchvision.transforms import Compose
 
-from utils.dir_paths import TRAIN_PATH
 from utils.MFB import calculate_MFB_stage
 from dataset.transforms import VerticalFlip, HorizontalFlip, Rotate90, CutOut, ZoomIn
 
@@ -17,10 +16,7 @@ logger = logging.getLogger(__name__)
 np.set_printoptions(precision=4, suppress=True)
 
 # Set number of workers for parallel dataloading based on the capacity of the CPU
-if 'lms' in os.uname()[1]:
-    WORKERS = 30
-else:
-    WORKERS = 0
+WORKERS = 16
 
 
 def set_seed(user_seed):

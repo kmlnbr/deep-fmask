@@ -63,9 +63,6 @@ def calculate_confusion_matrix(predicted_labels,true_labels,mode):
     for (i,j) in product(labels,repeat=2):
         conf_mat_t[i,j] = ((predicted_labels ==j)*(true_labels==i)).sum()
 
-    # del true_labels_np
-    # del predicted_labels_np
-    # gc.collect()
 
     return conf_mat_t
 

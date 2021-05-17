@@ -45,6 +45,9 @@ def get_args(argv=None):
                         help='Bands used as input to the network')
     parser.add_argument('--seed', type=int, default=None,
                         help='Random seed')
+    # Hardware
+    parser.add_argument('-gpu', '--gpu_id', type=int,nargs='+', default=[0],
+                        help='ID of the GPUs used for training. Ex: -gpu 0 3')
     return parser.parse_args(argv)
 
 
@@ -64,7 +67,7 @@ if __name__ == '__main__':
     test_loader = setup_data(mode='test', path=VALID_PATH)
 
     # Initial the model
-    model = Model(exp, full=args.full, dropout=args.dropout, inp_mode=args.inp_mode)
+    model = Model(exp, full=args.full, dropout=args.dropout, inp_mode=args.inp_mode,gpu_id=args.gpu_id)
 
     # Get the weights for the loss functions using the median frequency balancing method
     exp.weights = get_MFB_weights(train_loader)

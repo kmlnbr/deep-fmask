@@ -8,17 +8,15 @@ import torch
 import torch.nn.functional as F
 from torch.nn import DataParallel
 
-
 from dataset.network_input import get_inp_func, get_inp_channels
 
 from network.unet import UNet
 from utils.MFB import calculate_file_freq
-from utils.csv_logger import print_val_csv_metrics,make_overall_statistics_csv
+from utils.csv_logger import print_val_csv_metrics, make_overall_statistics_csv
 from utils.dir_paths import TRAIN_PATH
-from utils.metrics import calculate_accuracy,calculate_confusion_matrix
+from utils.metrics import calculate_accuracy, calculate_confusion_matrix
 
 from utils.metrics import Metrics
-
 
 logger = logging.getLogger(__name__)
 
@@ -42,45 +40,37 @@ def focal_loss(net_output, target):
     return torch.mean(focal_loss)
 
 
-
 class Model:
-    def __init__(self, experiment, full=False, dropout=True,
-                 inp_mode='all'):
+    def __init__(self, experiment, full=False, dropout=True, gpu_id=None):
+
         self.exp = experiment
-        self.lst = list(range(13))
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        self.inp_func = get_inp_func(inp_mode)
-        n_inp_channels = get_inp_channels(inp_mode)
+        self.inp_func = get_inp_func(self.exp.inp_mode)
+        n_inp_channels = get_inp_channels(self.exp.inp_mode)
 
-        if experiment.mode == 'label_gen':
-            i = -1
-        else:
-            i = 0
-        START_FILTER = filter_options[self.exp.stage + i]
-        DEPTH = depth_options[self.exp.stage + i]
+
+
+        start_filters = filter_options[self.exp.stage]
+        depth = depth_options[self.exp.stage]
         if full:
-            DEPTH = depth_options[-1]
-            START_FILTER = filter_options[-1]
+            depth = depth_options[-1]
+            start_filters = filter_options[-1]
 
-        logger.info("Depth used in stage {} = {}".format(self.exp.stage, DEPTH))
+        logger.info("Depth used in stage {} = {}".format(self.exp.stage, depth))
         logger.info(
-            "Filters used in stage {} = {}".format(self.exp.stage, START_FILTER))
+            "Filters used in stage {} = {}".format(self.exp.stage, start_filters))
 
+        # Initialize model and set the gpu ids used by the model
         self.network = UNet(num_classes=6, in_channels=n_inp_channels,
-                            depth=DEPTH,start_filts=START_FILTER,
-                            dropout=dropout).to(self.device)
-
+                            depth=depth, start_filts=start_filters,
+                            dropout=dropout)
+        self.network = DataParallel(self.network, device_ids=gpu_id)
         if experiment.mode == 'train':
-
-            if 'lms37-22' in os.uname()[1]:
-                self.network = DataParallel(self.network,
-                                            device_ids=[0, 1, 2, 3, 4, 5, 6])
-            self.optim = torch.optim.Adam(self.network.parameters(), lr=self.exp.lr,
-                                          weight_decay=0.00001)
-
             self.epoch = 0
+            self.optimizer = torch.optim.Adam(self.network.parameters(), lr=self.exp.lr,
+                                              weight_decay=0.00001)
 
             self.metrics = Metrics(self.device)
 
@@ -88,8 +78,9 @@ class Model:
             self.patience_counter = 0
             self.patience = 10
 
-            self.best_MIOU_moving_avg = 0.
+            self.best_mIoU_moving_avg = 0.
         else:
+            # Load the weights of the trained model
             trained_model = self.exp.get_trained_model_info()
             self.network.load_state_dict(trained_model['model_state_dict'])
 
@@ -109,9 +100,9 @@ class Model:
         """
         The validation step where the forward pass and the loss function is called.
 
-        The labels used for loss calculation depend on the mode of operation.
-        When mode is 'TRAIN', training labels such as F-Mask is used.
-        When mode is 'VALID' or 'TEST', the true labels are used for loss calculation.
+        The labels used for loss calculation depend on the mode of operation. When
+        mode is 'train', training labels such as F-Mask is used. When mode is
+        'valid' or 'test', the true labels are used for loss calculation.
         """
 
         # forward pass
@@ -173,18 +164,18 @@ class Model:
                 labels, mode)
             acc = 0
         else:
-            acc = calculate_accuracy(predicted_label,labels,mode).detach()
+            acc = calculate_accuracy(predicted_label, labels, mode).detach()
 
-        self.metrics.add_step_info(mode, loss.detach(),acc)
+        self.metrics.add_step_info(mode, loss.detach(), acc)
         return loss
 
     def backward_step(self, loss):
         """
         The backward propagation step for training the network.
         """
-        self.optim.zero_grad()
+        self.optimizer.zero_grad()
         loss.backward()
-        self.optim.step()
+        self.optimizer.step()
 
     def refresh_stats(self):
         """
@@ -192,9 +183,10 @@ class Model:
         displayed on the screen and stored in the log files. The metrics are then
         reset before the start of the next epoch.
         """
-        train_metrics, valid_metrics,class_metrics_dict = self.metrics.aggregate_metrics(self.epoch)
-        make_overall_statistics_csv(train_metrics, valid_metrics,class_metrics_dict,
-                                    self.epoch,self.exp.log_path)
+        train_metrics, valid_metrics, class_metrics_dict = self.metrics.aggregate_metrics(
+            self.epoch)
+        make_overall_statistics_csv(train_metrics, valid_metrics, class_metrics_dict,
+                                    self.epoch, self.exp.log_path)
 
         self.metrics.reset_metrics()
         self.epoch += 1
@@ -292,13 +284,13 @@ class Model:
     def check_early_stop(self):
         if self.epoch <= self.patience: return False
 
-        MIOU_moving_avg = np.mean(self.metrics.val_mIoU_history[-self.patience:])
-        logger.info('Current mIoU moving average {:.4}'.format(MIOU_moving_avg))
+        mIoU_moving_avg = np.mean(self.metrics.val_mIoU_history[-self.patience:])
+        logger.info('Current mIoU moving average {:.4}'.format(mIoU_moving_avg))
         logger.info(
-            'Best mIoU moving average {:.4}'.format(self.best_MIOU_moving_avg))
+            'Best mIoU moving average {:.4}'.format(self.best_mIoU_moving_avg))
 
-        if MIOU_moving_avg >= self.best_MIOU_moving_avg:
-            self.best_MIOU_moving_avg = MIOU_moving_avg
+        if mIoU_moving_avg >= self.best_mIoU_moving_avg:
+            self.best_mIoU_moving_avg = mIoU_moving_avg
             self.patience_counter = 0
         else:
 
@@ -308,7 +300,6 @@ class Model:
                     'Early stopping triggered at  epoch {}'.format(self.epoch))
 
                 return True
-
 
         return False
 
