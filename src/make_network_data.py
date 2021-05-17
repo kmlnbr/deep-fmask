@@ -94,7 +94,7 @@ def resize_window(new_size, window_data, window_transform,
     return window_data, window_transform
 
 
-def read_window(img_path, vertical_index=None, horizontal_index=None):
+def read_window(img_path, vertical_index=None, horizontal_index=None,overlap=False):
     """Extract band data from the image path using a window whose bounds are
     defined by vertical and horizontal indices and the window size. By passing the
     vertical indices and horizontal indices as None, the whole image can be read.
@@ -105,12 +105,16 @@ def read_window(img_path, vertical_index=None, horizontal_index=None):
     band = rasterio.open(img_path)
     window_length = WINDOW_SIZE * 10
 
+    overlap_length = WINDOW_SIZE * 2 if overlap else 0
+
+
     top_bound = band.bounds.top - window_length
     right_bound = band.bounds.right - window_length
     if vertical_index is not None:
-        left = min(band.bounds.left + (horizontal_index * window_length),
+        effective_length = window_length-overlap_length
+        left = min(band.bounds.left + (horizontal_index * effective_length),
                    right_bound)
-        bottom = min(band.bounds.bottom + (vertical_index * window_length),
+        bottom = min(band.bounds.bottom + (vertical_index * effective_length),
                      top_bound)
         top = bottom + window_length
         right = left + window_length
