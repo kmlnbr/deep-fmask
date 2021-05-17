@@ -1,27 +1,26 @@
-
-
-
 # Deep F-Mask for Cloud, Shadow and Snow detection in Sentinel 2 Imagery
 This repository contains the code based on the methods described in the paper 'Self-Trained Cloud, Cloud Shadow and Snow Masking Model
 for Sentinel-2 Images in Polar Regions'.
 
 Paper Link: 
 
-Contact: 
+Contact: kamal.nambiar@fau.de
 
 ---
 ### Install instructions
 
-The code in this repository was developed for Python 3.6 on CentOS. 
+The code in this repository was developed for Python 3.6 on CentOS 8. 
 
 - We recommend using an Anaconda environment for managing the dependencies.
+You may have to modify the cudatoolkit version in the *environment.yml* depending on the
+  GPU model.
 ```console 
 conda env create --name DFMask --file environment.yml
 ``` 
-- [Optional: For Training/Comparision] Install the Fmask4 from the developer's [GitHub repository]( https://github.com/GERSL/Fmask).
-- [Optional: For Comparision] Install Sen2Cor 2.8 from [ESA STEP Website](http://step.esa.int/main/snap-supported-plugins/sen2cor/sen2cor_v2-8/).
+- [Optional: For Training/Comparison] Install the Fmask4 from the developer's [GitHub repository]( https://github.com/GERSL/Fmask).
+- [Optional: For Comparison] Install Sen2Cor 2.8 from [ESA STEP Website](http://step.esa.int/main/snap-supported-plugins/sen2cor/sen2cor_v2-8/).
 
-### Dataset Setup
+### Training Dataset Setup
 - Go to the exp_data directory
 - Install the .SAFE files provided in the *train_filename.txt*, *test_filename.txt* 
   and *validation_filename.txt*  from [Copernicus Datahub](https://scihub.copernicus.eu/dhus/#/home)
@@ -42,20 +41,39 @@ python make_network_data.py --mode test
 
 ---
 ### Training
+- The complete training pipeline 
+  consists of iterative training and label generation. The pipeline.sh implements a 4 stage training pipeline.
+  The experiment name is the prefix used for each model. For example, if we use 
+  if we set the experiment name as exp1, the model name for the stage 0 will be 
+  exp1_stage0.
 - In order to train an experiment called `exp1`
 
 ```console
 ./pipeline.sh exp1
 ```
-
-
+- The trained model, as well as the logs of the training, will be saved the
+*exp_data* directory.
+- **NOTE**: If we were to reuse a previously used experiment name, the old files will be 
+overwritten.
 ### Evaluation
-- In order to test a trained model in exp1
+- In order to test a trained model in exp1. 
 ```console
-python predict.py -e exp1_stage3 -p /path/containing/SAFE/files/
+python predict.py -e exp1_stage3 -p /path/containing/SAFE/directories/
 ```
+- The predictions are stored as a tif file 
+  in the IMG_DATA directory of the respective Sentinel 2 .SAFE directory.
+- The classes are labeled as follows:
 
+| Label | Class |
+|:---:|:---:|
+| 0 | No-data |
+| 1 | Clear Land |
+| 2 | Cloud |
+| 3 | Cloud Shadow |
+| 4 | Snow |
+| 5 | Water |
 ---
+
 ### Directory Structure
 ```bash
 ├── exp_data
