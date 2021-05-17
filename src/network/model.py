@@ -32,7 +32,7 @@ depth_options = [5, 5, 6, 6]
 ####################################################################################
 
 class Model:
-    def __init__(self, experiment, full=False, dropout=True, gpu_id=None):
+    def __init__(self, experiment, gpu_id):
 
         self.exp = experiment
 
@@ -43,11 +43,14 @@ class Model:
 
 
 
-        start_filters = filter_options[self.exp.stage]
-        depth = depth_options[self.exp.stage]
-        if full:
+        if experiment.full:
+            # To train model in fully supervised mode
             depth = depth_options[-1]
             start_filters = filter_options[-1]
+        else:
+            # To train model in self-training mode
+            start_filters = filter_options[self.exp.stage]
+            depth = depth_options[self.exp.stage]
 
         logger.info("Depth used in stage {} = {}".format(self.exp.stage, depth))
         logger.info(
@@ -56,7 +59,7 @@ class Model:
         # Initialize model and set the gpu ids used by the model
         self.network = UNet(num_classes=6, in_channels=n_inp_channels,
                             depth=depth, start_filts=start_filters,
-                            dropout=dropout)
+                            dropout=self.exp.dropout)
         self.network = DataParallel(self.network, device_ids=gpu_id)
         if experiment.mode == 'train':
             self.epoch = 0

@@ -178,7 +178,8 @@ class UNet(nn.Module):
             x, double_conv_out = encoder(x)
             encoder_double_conv_outs.append(double_conv_out)
 
-        # Remove the last term and reverse list containing encoder outputs at each level
+        # Remove the last term and reverse list containing encoder outputs at each
+        # level
         encoder_double_conv_outs = encoder_double_conv_outs[-2::-1]
         for decoder, double_conv_out in zip(self.decoders, encoder_double_conv_outs):
             x = decoder(double_conv_out, x)

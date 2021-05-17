@@ -43,7 +43,8 @@ class Experiment:
                 'n_epoch': args.num_epochs,
                 'stage': args.stage,
                 'full': args.full,
-                'inp_mode': args.inp_mode
+                'inp_mode': args.inp_mode,
+                'dropout':args.dropout,
             }
             set_logfile_path(self.log_path, mode)
             logger.info('Train experiment stage {}'.format(args.stage))
@@ -95,6 +96,9 @@ class Experiment:
         if self.mode != 'train':
             self.config['stage'] = trained_model['stage']
             self.config['inp_mode'] = trained_model['inp_mode']
+            self.config['full'] = trained_model['full']
+            self.config['dropout'] = False
+
         logger.info('Model loaded:{}'.format(trained_model_path))
         return trained_model
 
@@ -121,3 +125,8 @@ class Experiment:
     @property
     def inp_mode(self):
         return self.config['inp_mode']
+
+    @property
+    def dropout(self):
+        return self.config['dropout']
+

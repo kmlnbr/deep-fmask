@@ -68,7 +68,7 @@ if __name__ == '__main__':
     else:
         full = args.full
 
-    model = Model(exp, full=full, gpu_id=args.gpu_id)
+    model = Model(exp, gpu_id=args.gpu_id)
     model.network.eval()
     args.pred_path = os.path.abspath(args.pred_path)
 

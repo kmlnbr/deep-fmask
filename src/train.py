@@ -67,7 +67,7 @@ if __name__ == '__main__':
     test_loader = setup_data(mode='test', path=VALID_PATH)
 
     # Initial the model
-    model = Model(exp, full=args.full, dropout=args.dropout, inp_mode=args.inp_mode,gpu_id=args.gpu_id)
+    model = Model(exp,gpu_id=args.gpu_id)
 
     # Get the weights for the loss functions using the median frequency balancing method
     exp.weights = get_MFB_weights(train_loader)
