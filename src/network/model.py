@@ -31,15 +31,6 @@ depth_options = [5, 5, 6, 6]
 
 ####################################################################################
 
-
-def focal_loss(net_output, target):
-    gamma = 2
-    ce_loss = F.cross_entropy(net_output, target, reduction='none')
-    pt = torch.exp(-ce_loss)
-    focal_loss = ((1 - pt) ** gamma * ce_loss)
-    return torch.mean(focal_loss)
-
-
 class Model:
     def __init__(self, experiment, full=False, dropout=True, gpu_id=None):
 
