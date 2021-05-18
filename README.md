@@ -26,7 +26,7 @@ conda env create --name DFMask --file environment.yml
   and *validation_filename.txt*  from [Copernicus Datahub](https://scihub.copernicus.eu/dhus/#/home)
 and save them in TRAIN, TEST and VALIDATION directories respectively. 
 - For each file run the Fmask 4 algorithm and save the corresponding Fmask output in 
-  the IMG_DATA directory of each SAFE file.
+  the IMG_DATA directory of each SAFE file with a *FMASK.tif postfix.
 - Generate the training and validation data (h5 files) using the below command. 
 ```console
 python make_network_data.py --mode train

@@ -141,48 +141,6 @@ def save_as_gtiff(window_data, metadata, out_filename):
         dst.write(window_data, 1)
 
 
-def read_window(img_path, bottom_offset=None, left_offset=None):
-    band = rasterio.open(img_path)
-    window_length = SIZE_10M * 10
-
-    top_bound = band.bounds.top - window_length
-    right_bound = band.bounds.right - window_length
-    if not bottom_offset is None:
-        left = min(band.bounds.left + (left_offset * window_length), right_bound)
-        bottom = min(band.bounds.bottom + (bottom_offset * window_length), top_bound)
-        top = bottom + window_length
-        right = left + window_length
-    else:
-        left = band.bounds.left
-        bottom = band.bounds.bottom
-        top = band.bounds.top
-        right = band.bounds.right
-
-    polygon_window = rasterio.windows.from_bounds(left=left,
-                                                  bottom=bottom,
-                                                  right=right,
-                                                  top=top,
-                                                  transform=band.transform)
-
-    window_data = band.read(1, window=polygon_window)
-    window_transform = rasterio.windows.transform(polygon_window, band.transform)
-    metadata = band.meta.copy()
-
-    metadata['width'] = window_data.shape[1]
-    metadata['height'] = window_data.shape[0]
-    metadata['bounds'] = (left, bottom, right, top)
-
-    if not bottom_offset is None:
-        if 'LABEL' in img_path or 'FMASK' in img_path:
-            label_interpolation = True
-        else:
-            label_interpolation = False
-        window_data, window_transform = fix_window_size(window_data,
-                                                        window_transform,
-                                                        label_interpolation)
-
-    return window_data, metadata
-
 
 def fix_window_size(window_data, window_transform, label_interpolation=False):
     if window_data.shape[0] != RESCALE_SIZE:

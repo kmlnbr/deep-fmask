@@ -1,3 +1,6 @@
+"""This script implements the mean frequency balancing used to calculate the weights
+for the loss function"""
+
 import logging
 import os
 
@@ -73,7 +76,7 @@ def get_MFB_weights(trainloader):
     logger.info('Total freq {}'.format(100 * freq))
 
     freq_median = np.median(freq)
-    weight = np.divide(freq_median, freq, out=np.zeros_like(freq), where=freq > 1e-5)
+    weight = np.divide(freq_median, freq, out=np.zeros_like(freq), where=freq >= 1)
     weight[0] = 0  # For the no-data class
     logger.info('Class Weights {}'.format(weight))
     return weight
