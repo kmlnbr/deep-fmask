@@ -41,12 +41,22 @@ python make_network_data.py --mode test
 
 ---
 ### Training
+#### Supervised Mode
+- To train the mode in a fully supervised mode using only the F-Mask labels:
+```console
+python train.py supervised_exp --full
+```
+- For more details on the training script arguments:
+```console
+python train.py --help
+```
+#### Self- Training Mode
 - The complete training pipeline 
   consists of iterative training and label generation. The pipeline.sh implements a 4 stage training pipeline.
   The experiment name is the prefix used for each model. For example, if we use 
   if we set the experiment name as exp1, the model name for the stage 0 will be 
   exp1_stage0.
-- In order to train an experiment called `exp1`
+- In order to train an experiment called `exp1`:
 
 ```console
 ./pipeline.sh exp1
@@ -56,7 +66,7 @@ python make_network_data.py --mode test
 - **NOTE**: If we were to reuse a previously used experiment name, the old files will be 
 overwritten.
 ### Evaluation
-- In order to test a trained model in exp1. 
+- In order to test a trained model from the last stage (stage 3) of `exp1`: 
 ```console
 python predict.py -e exp1_stage3 -p /path/containing/SAFE/directories/
 ```
