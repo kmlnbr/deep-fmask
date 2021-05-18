@@ -24,24 +24,26 @@ def get_args(argv=None):
 
     parser.add_argument('-e', '--exp_name', help='Name of experiment')
     # Network
+    parser.add_argument('--full', dest='full', action='store_true', default=False,
+                        help='Train the largest network in the pipeline using the '
+                             'complete dataset on the F-Mask labels, i.e., '
+                             'supervised learning using F-Mask labels')
     parser.add_argument('-st', '--stage', type=int, default=0,
-                        help='Training stage')
+                        help='Training stage of the self-training pipeline')
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.001,
                         help='Learning Rate')
-    parser.add_argument('--full', dest='full', action='store_true', default=False,
-                        help='Train the largest network in the pipeline using the whole data on '
-                             'the F-Mask labels, i.e., supervised learning using F-Mask labels')
     parser.add_argument('--no_dropout', dest='dropout', action='store_false', default=True,
-                        help='Flag used to avoid dropout usage during training')
+                        help='Flag used to avoid dropout usage in the network')
     parser.add_argument('-ep', '--num_epochs', type=int, default=400,
                         help='Number of training epochs')
     # Data
     parser.add_argument('-bs', '--batch_size', type=int, default=32,
                         help='Batch size for each step of training')
     parser.add_argument('--no_aug', dest='aug', action='store_false', default=True,
-                        help='Flag used to avoid augmentation during training')
+                        help='Flag used to avoid use of augmentation in training data')
     parser.add_argument('--reset_stage_data', dest='reset_stage_data', action='store_true',
-                        default=False, help='Flag used reshuffle and split stage data')
+                        default=False, help='Flag used reassign h5 files for each '
+                                            'stage of self training pipeline')
     parser.add_argument('-ip', '--inp_mode', default='all',
                         help='Bands used as input to the network')
     parser.add_argument('--seed', type=int, default=None,
