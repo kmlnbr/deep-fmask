@@ -75,7 +75,6 @@ if __name__ == '__main__':
         make_patch(new_safe_folders, mode='predict')
     file_count = len(H5_folder_name)
 
-
     for file_idx, H5_folder in enumerate(H5_folder_name):
         logger.info("Predicting {}".format(H5_folder))
         test_loader = setup_data(path=H5_folder, mode='predict')
@@ -110,20 +109,12 @@ if __name__ == '__main__':
         CONF_SEN2COR_FULL += conf_sen2cor
         CONF_PRED_FULL += conf_labels
 
-    if torch.all(CONF_PRED_FULL ==0):
+    if torch.all(CONF_PRED_FULL == 0):
         logger.info('Metrics not calculated because true label file not found.')
         sys.exit(0)
 
     metrics = []
     for matrix in [CONF_FMASK_FULL, CONF_SEN2COR_FULL, CONF_PRED_FULL]:
         metrics.append(get_metrics(matrix))
-
-    print('Accuracy'.ljust(
-        10) + '\t\t FMask {:6.4}\t Sen2Cor {:6.4}\t OurModel {:6.4}'.format(
-        metrics[0]['acc'], metrics[1]['acc'], metrics[2]['acc']))
-    print('mIOU'.ljust(
-        10) + '\t\t FMask {:6.4}\t Sen2Cor {:6.4}\t OurModel {:6.4}'.format(
-        metrics[0]['mIOU'], metrics[1]['mIOU'], metrics[2]['mIOU']))
-    print('+' * 75)
 
     pred_csv(metrics)

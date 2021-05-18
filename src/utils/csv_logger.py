@@ -111,6 +111,14 @@ def pred_csv(metrics_values, do_print=True):
             filename = 'pred_class.csv'
             add_to_csv(row_entry, td, filename)
         if do_print:
+            print('Accuracy'.ljust(
+                10) + '\t\t FMask {:6.4}\t Sen2Cor {:6.4}\t OurModel {:6.4}'.format(
+                metrics_values[0]['acc'], metrics_values[1]['acc'], metrics_values[2]['acc']))
+            print('mIOU'.ljust(
+                10) + '\t\t FMask {:6.4}\t Sen2Cor {:6.4}\t OurModel {:6.4}'.format(
+                metrics_values[0]['mIOU'], metrics_values[1]['mIOU'], metrics_values[2]['mIOU']))
+            print('+' * 75)
+
             print_pred_csv_metrics(td, filename)
 
 
