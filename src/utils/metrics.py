@@ -111,7 +111,7 @@ def get_full_stats(safe_folder,exp_name):
     predict_path = predict_path[-1]
     prediction = read_file(predict_path)
 
-    fmask = read_tif(safe_folder,'F4MASK',*prediction.shape)
+    fmask = read_tif(safe_folder,'FMASK',*prediction.shape)
     sen2cor = read_tif(safe_folder,'SEN2COR',*prediction.shape)
     labels = read_tif(safe_folder,'LABELS',*prediction.shape)
 

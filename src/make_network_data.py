@@ -1,24 +1,23 @@
-"""
-This script is used to split the Sentinel-2 scene into multiple sub-scenes stored as h5 files
-containing the 13 spectral bands as well as the labels (when available).
-"""
+"""This script contains various functions that are used for splitting a given
+Sentinel-2 input from the SAFE folder into sub-scenes stored as h5 files containing
+the 13 spectral bands as well as the labels (when available). """
 
-import argparse
 import glob
-import logging
 import os
-from itertools import product
+import tempfile
 
-import cv2
-import h5py
 import numpy as np
 import rasterio
+import cv2
+import argparse
+from itertools import product
+import logging
 
 from utils.dir_paths import TRAIN_SAFE_PATH, VALID_SAFE_PATH
-from utils.dataset_stats import save_stats
+from utils.dataset_stats_dummy import main_csv
 
-# Logging
 logger = logging.getLogger('__name__')
+import h5py
 
 
 def setup_logger():
@@ -29,13 +28,24 @@ def setup_logger():
 
 
 # When we have tiles_per_row=n, we will have total tiles as n*n
-PATCHES_PER_ROW = 10
-WINDOW_SIZE = np.ceil(10980 / PATCHES_PER_ROW).astype(int)
+# window size is written in terms of pixels in 10m resolution
+# Network processes input at 20m resolution. The input is zero-padded.
 
-RESCALE_SIZE = 549  # Set to 0 if rescaling is not to be done.
 
-if not RESCALE_SIZE:
-    RESCALE_SIZE = WINDOW_SIZE
+NETWORK_INPUT_SIZE = 256
+border_width = 1
+
+# Effective sub-scene size in 20m resolution by substracting the border width on
+# both sides.
+SIZE_20M= NETWORK_INPUT_SIZE - (border_width*2)
+
+SIZE_10M = 2*SIZE_20M
+
+# There are 10980 pixels in the 10m resolution image.
+TILES_PER_ROW = np.ceil(10980 / SIZE_10M).astype(int)
+
+# To rescale to 20m resolution set Rescale size to half of window size.
+RESCALE_SIZE = int(SIZE_10M / 2)
 
 
 def get_args(argv=None):
@@ -50,33 +60,63 @@ def get_args(argv=None):
     return parser.parse_args(argv)
 
 
-def get_img_paths(safe_path):
-    """Returns a sorted list of image files for a given safe folder path. The
-    FMASK will be included and the true color image will be excluded from the
-    list.
-    """
+def generate_out_filename(img_path, mode, format='tif'):
+    parent_path, image = img_path.replace('jp2', format).replace('raw', mode).split(
+        '.SAFE')
+    out_filename = '{}_{}'.format(parent_path, image.split('_')[-1])
+    return out_filename
 
+
+
+
+def get_img_paths(safe_path, mode):
+    """Returns a sorted list of image files for a given safe folder path. The FMASK will be included and the true
+    color image will be excluded from the list."""
+
+    # get all Sentinel2 filenames
     img_paths = sorted(glob.glob(os.path.join(safe_path, '**', 'IMG_DATA', '*.jp2'),
                                  recursive=True))
-    img_paths.extend(
-        glob.glob(os.path.join(safe_path, '**', 'IMG_DATA', '*FMASK.tif'),
-                  recursive=True))
-    img_paths.extend(
-        glob.glob(os.path.join(safe_path, '**', 'IMG_DATA', '*LABELS.tif'),
-                  recursive=True))
+    # remove true color image
     img_paths = list(filter(lambda x: not x.endswith('TCI.jp2'), img_paths))
+    # get fmask
+    fmask_path = glob.glob(os.path.join(safe_path, '**', 'IMG_DATA', '*FMASK.tif'),
+                           recursive=True) # F4MASK
+    # raise error if fmask not found in train mode
+    if len(fmask_path) == 1:
+        img_paths.extend(fmask_path)
+    elif mode == 'train':
+        raise FileNotFoundError('FMask file not found in format *FMASK.tif')
+    else:
+        # if fmask is not available in test or predict, we create a zero array instead
+        logger.warning('No F4MASK file found for {}'.format(os.path.basename(safe_path)))
+        nofile_path = 'NOFILE' + os.path.basename(img_paths[0]).replace('B01.jp2',
+                                                                        'FMASK.tif') # F4MASK
+        img_paths.append(nofile_path)
+
+    # For validation mode check if true label is available and get its path
+    if mode == 'test':
+        label_path = glob.glob(
+            os.path.join(safe_path, '**', 'IMG_DATA', '*LABELS.tif'),
+            recursive=True)
+        # raise error if fmask not found in train mode
+        if len(label_path) == 1:
+            img_paths.extend(label_path)
+        else:
+            raise FileNotFoundError('Label file not found in format *LABELS.tif')
 
     return img_paths
 
 
 def resize_window(new_size, window_data, window_transform,
                   label_interpolation=False):
+
     """Resizes the windows from different bands. Since bands come in multiple
     resolutions they need to be resized. Cubic interpolation is used for resizing
     the bands. Nearest neighbour interpolation is used for labels because
     cubic interpolation will lead to floating point labels which cannot be used
     for training or validation.
     """
+
 
     old = window_data.shape[0]
     if label_interpolation:
@@ -94,28 +134,22 @@ def resize_window(new_size, window_data, window_transform,
     return window_data, window_transform
 
 
-def read_window(img_path, vertical_index=None, horizontal_index=None,overlap=False):
-    """Extract band data from the image path using a window whose bounds are
-    defined by vertical and horizontal indices and the window size. By passing the
-    vertical indices and horizontal indices as None, the whole image can be read.
-    The images are then rescaled to the size defined by RESCALE_SIZE global
-    parameter.
-    """
+def save_as_gtiff(window_data, metadata, out_filename):
+    metadata.update({'driver': 'GTiff'})
 
+    with rasterio.open(out_filename, 'w', **metadata) as dst:
+        dst.write(window_data, 1)
+
+
+def read_window(img_path, bottom_offset=None, left_offset=None):
     band = rasterio.open(img_path)
-    window_length = WINDOW_SIZE * 10
-
-    overlap_length = WINDOW_SIZE * 2 if overlap else 0
-
+    window_length = SIZE_10M * 10
 
     top_bound = band.bounds.top - window_length
     right_bound = band.bounds.right - window_length
-    if vertical_index is not None:
-        effective_length = window_length-overlap_length
-        left = min(band.bounds.left + (horizontal_index * effective_length),
-                   right_bound)
-        bottom = min(band.bounds.bottom + (vertical_index * effective_length),
-                     top_bound)
+    if not bottom_offset is None:
+        left = min(band.bounds.left + (left_offset * window_length), right_bound)
+        bottom = min(band.bounds.bottom + (bottom_offset * window_length), top_bound)
         top = bottom + window_length
         right = left + window_length
     else:
@@ -138,40 +172,94 @@ def read_window(img_path, vertical_index=None, horizontal_index=None,overlap=Fal
     metadata['height'] = window_data.shape[0]
     metadata['bounds'] = (left, bottom, right, top)
 
-    if vertical_index is not None:
+    if not bottom_offset is None:
         if 'LABEL' in img_path or 'FMASK' in img_path:
             label_interpolation = True
         else:
             label_interpolation = False
-
-        if window_data.shape[0] != RESCALE_SIZE:
-            window_data, window_transform = resize_window(RESCALE_SIZE, window_data,
-                                                          window_transform,
-                                                          label_interpolation)
+        window_data, window_transform = fix_window_size(window_data,
+                                                        window_transform,
+                                                        label_interpolation)
 
     return window_data, metadata
 
 
+def fix_window_size(window_data, window_transform, label_interpolation=False):
+    if window_data.shape[0] != RESCALE_SIZE:
+        window_data, window_transform = resize_window(RESCALE_SIZE, window_data,
+                                                      window_transform,
+                                                      label_interpolation)
+
+    return window_data, window_transform
 
 
-def make_patch(safe_file_list, mode='train'):
-    """Generates patch files in h5 format for each safe file in the safe_file_list"""
+def split_img(img_path, temp_dirpath,overlap):
+    if img_path.startswith('NOFILE'):
+        window_data = np.zeros((RESCALE_SIZE, RESCALE_SIZE), dtype=np.uint16)
+        for n_patch in range(TILES_PER_ROW ** 2):
+            out_path = os.path.join(temp_dirpath,
+                                    img_path.replace('NOFILE',
+                                                     '') + "_PATCH{}".format(
+                                        n_patch))
+            np.save(out_path, window_data)
 
+    else:
+        band = rasterio.open(img_path)
+        window_length = SIZE_10M * 10
+
+        top_bound = band.bounds.top - window_length
+        right_bound = band.bounds.right - window_length
+
+        for n_patch, (a, b) in enumerate(product(range(TILES_PER_ROW), repeat=2)):
+            left = min(band.bounds.left + (b * window_length), right_bound)
+            bottom = min(band.bounds.bottom + (a * window_length), top_bound)
+            top = bottom + window_length
+            right = left + window_length
+
+            polygon_window = rasterio.windows.from_bounds(left=left,
+                                                          bottom=bottom,
+                                                          right=right,
+                                                          top=top,
+                                                          transform=band.transform)
+
+            window_data = band.read(1, window=polygon_window)
+            window_transform = rasterio.windows.transform(polygon_window,
+                                                          band.transform)
+
+            if 'LABEL' in img_path or 'FMASK' in img_path:
+                label_interpolation = True
+            else:
+                label_interpolation = False
+            window_data, window_transform = fix_window_size(window_data,
+                                                            window_transform,
+                                                            label_interpolation)
+
+            out_path = os.path.join(temp_dirpath,
+                                    os.path.basename(img_path) + "_PATCH{}".format(
+                                        n_patch))
+            np.save(out_path, window_data)
+
+
+def make_patch(safe_file_list, mode):
+    total_files = len(safe_file_list)
     for file_n, safe_path in enumerate(safe_file_list):
-        logger.info('{} {}'.format(file_n + 1, safe_path))
-        img_paths = get_img_paths(safe_path)
 
-        # create directory to save h5 files
+        logger.info('[{}/{}] {}'.format(file_n + 1,
+                                        total_files,
+                                        os.path.basename(safe_path)))
+
+        img_paths = get_img_paths(safe_path, mode=mode)
         if mode == 'predict':
-            h5_folder_path = safe_path + '_H5'
+            out_folder_path = safe_path + '_H5'
             safe_filename = os.path.basename(safe_path)
+            overlap = True
         else:
             [parent_path, safe_filename] = safe_path.rsplit('/', 1)
-            h5_folder_path = parent_path + '_H5'
-        os.makedirs(h5_folder_path, exist_ok=True)
+            out_folder_path = parent_path + '_H5'
+            overlap = False
+        os.makedirs(out_folder_path, exist_ok=True)
 
-        # Store metadata of the parent file  and each patch (done inside loop) to
-        # use for joining later if required.
+
         metadata_dict = {}
 
         B05_path = [pth for pth in img_paths if 'B05' in pth][0]
@@ -184,47 +272,34 @@ def make_patch(safe_file_list, mode='train'):
 
         metadata_dict['parent'] = metadata
         del B05_band
-
-        for n_patch, (a, b) in enumerate(product(range(PATCHES_PER_ROW), repeat=2)):
-
-            spectral_data = np.zeros((RESCALE_SIZE, RESCALE_SIZE, len(img_paths)),
-                                     dtype=np.uint16)
-
-            out_file_name = safe_filename.replace('.SAFE',
-                                                  '_PATCH{}.h5'.format(n_patch))
+        with tempfile.TemporaryDirectory() as td:
             for n_i, img_path in enumerate(img_paths):
+                split_img(img_path, td,overlap)
+            logger.debug("Completed split")
+            for n_patch in range(TILES_PER_ROW ** 2):
+                spectral_data = np.zeros(
+                    (RESCALE_SIZE, RESCALE_SIZE, len(img_paths)), dtype=np.uint16)
+                out_file_name = safe_filename.replace('.SAFE',
+                                                      '_PATCH{}.h5'.format(n_patch))
 
-                window_data, metadata = read_window(img_path, a, b)
-                spectral_data[:, :, n_i] = window_data
+                split_img_paths = sorted(
+                    glob.glob(os.path.join(td, '*_PATCH{}.npy'.format(n_patch))))
+                for idx, split_img_path in enumerate(split_img_paths):
+                    window = np.load(split_img_path)
+                    spectral_data[:, :, idx] = window
 
-                if mode == 'validation' and 'LABELS.tif' in img_path:
-                    if np.all(window_data == 0):
-                        out_file_name = safe_filename.replace('.SAFE',
-                                                              '_PATCH{}.h5.NIL'.format(
-                                                                  n_patch))
+                    labels_file = {'test': 'LABELS.tif', 'train': 'FMASK.tif'}
 
-                if 'B05' in img_path:
-                    metadata_dict[n_patch] = metadata
-
-            out_file_path = os.path.join(h5_folder_path, out_file_name)
-
-            # Prevent saving patch file that don't have any validation labels.
-            # This check does not apply for the train mode.
-            if not out_file_name.endswith('.NIL'):
-                with h5py.File(out_file_path, "w") as hf:
-                    hf.create_dataset('data', data=spectral_data, )
-
-        # save the metadata dictionary as a numpy data file
-        out_file_name = safe_filename.replace('.SAFE', '_META.npy')
-        out_file_path = os.path.join(h5_folder_path, out_file_name)
-        np.save(out_file_path, metadata_dict)
-    if mode == 'train':
-        logger.info('Generating dataset stats from {}'.format(h5_folder_path))
-        save_stats(h5_folder_path)
-
-
-
-
+                    if (mode in labels_file and labels_file[mode] in split_img_path):
+                        if np.all(window == 0):
+                            out_file_name = safe_filename.replace('.SAFE',
+                                                                  '_PATCH{}.h5.NIL'.format(
+                                                                      n_patch))
+                if not out_file_name.endswith('h5.NIL'):
+                    out_file_path = os.path.join(out_folder_path, out_file_name)
+                    with h5py.File(out_file_path, "w") as hf:
+                        hf.create_dataset('data', data=spectral_data, )
+    main_csv(mode=mode, path=out_folder_path)
 
 if __name__ == '__main__':
 
@@ -235,7 +310,7 @@ if __name__ == '__main__':
     if not args.path:
         if args.mode == 'train':
             args.path = TRAIN_SAFE_PATH
-        elif args.mode == 'validation':
+        elif args.mode == 'test':
             args.path = VALID_SAFE_PATH
         else:
             NotImplementedError()

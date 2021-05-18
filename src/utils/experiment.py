@@ -54,7 +54,6 @@ class Experiment:
             self.config = {
                 'name': args.exp_name,
                 'model_epoch': args.model_epoch,
-                'stage': args.stage,
             }
             set_logfile_path(self.log_path, mode)
             logger.info('Prediction Experiment {}'.format(args.exp_name))

@@ -54,19 +54,24 @@ def setup_data(batch_size=1, mode='train', stage=0, path=None,
                reset=False):
     """Setups up the dataloaders for each stage of the pipeline"""
     datasets = []
-    shuffle = False
+    shuffle = True if mode == 'train' else False
 
     if mode == 'train':
         if stage != 0 and reset:
             logger.warning(
-                "Stage data reset can be done only in stage 0. Setting reset_stage_data flag to False")
+                "Stage data reset can be done only in stage 0. Setting "
+                "reset_stage_data flag to False")
             reset = False
+        # Check if h5 have been already assigned to each stage
         if not check_data_split(path, reset=reset):
             split_data(path)
-        shuffle = True
+
         if full:
+            # For fully supervised mode, the text file named stage_full.txt with
+            # all the h5 files is used.
             file_path = os.path.join(path, 'stage_full.txt')
             with open(file_path, 'r') as fl:
+                # Read file names and store to list
                 files_list = [line.rstrip() for line in fl.readlines()]
                 datasets.append(
                     PatchDataset(mode, file_list=files_list, stage=0,
@@ -75,6 +80,9 @@ def setup_data(batch_size=1, mode='train', stage=0, path=None,
                 "Total stage full train set size: {}".format(len(files_list)))
         else:
             for i in range(stage + 1):
+                # For self-trained mode, the text file named stage_0.txt, etc with
+                # all the h5 files for stage 0 is used. Similarly for stages 1,
+                # 2 and 3.
                 file_path = os.path.join(path, 'stage_{}.txt'.format(i))
                 with open(file_path, 'r') as fl:
                     files_list = [line.rstrip() for line in fl.readlines()]
@@ -93,6 +101,7 @@ def setup_data(batch_size=1, mode='train', stage=0, path=None,
 
     elif mode == 'label_gen':
         for i in range(1, stage + 1):
+            # For label generation, we use previous h5 files expect from stage 0.
             file_path = os.path.join(path, 'stage_{}.txt'.format(i))
             with open(file_path, 'r') as fl:
                 files_list = [line.rstrip() for line in fl.readlines()]
@@ -130,6 +139,7 @@ def split_data(h5_folder, stage_0_ratio=0.25, stages=4):
     with open(train_list_filename, 'w') as f:
         for train_file in file_list:
             f.write("{}\n".format(train_file))
+
     unlabelled_ratio = 1 - stage_0_ratio
     unlabelled_size = int(n_files * unlabelled_ratio / (stages - 1))
     labeled_size = n_files - (stages - 1) * unlabelled_size

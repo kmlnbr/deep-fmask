@@ -27,37 +27,6 @@ def get_args(argv=None):
 
 
 
-def prepare_destination_plot(destination):
-    """Read and resize the output the image for plotting"""
-
-    with rasterio.open(destination) as mosaic_raster:
-        data = mosaic_raster.read(1)
-    # data = cv2.resize(data, dsize=(2048,2048))
-
-    return data
-
-def prepare_true_color_plot(img_folder):
-    """Read and resize the True Color input for plotting"""
-
-    channels = np.zeros((2048,2048,3))
-    # for i in range(1,4):
-    img = sorted(glob.glob(os.path.join(img_folder,'*TCI.jp2')))
-    with rasterio.open(img[0]) as mosaic_raster:
-        for i in range(1,4):
-            data = mosaic_raster.read(i)
-
-            channels[:,:,i-1] = cv2.resize(data, dsize=(2048, 2048))
-
-    channels =cv2.normalize(channels, None, alpha=0, beta=255,
-                    norm_type=cv2.NORM_MINMAX,dtype=cv2.CV_8U)
-
-    return channels
-
-
-
-
-
-
 def join_files(h5_folder,output = None,exp=None):
     file_list = glob.glob(os.path.join(h5_folder, '*.h5'))
     file_list = list(set(i.rsplit("_", 1)[0] for i in file_list))

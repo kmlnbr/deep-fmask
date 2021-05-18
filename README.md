@@ -119,7 +119,6 @@ python predict.py -e exp1_stage3 -p /path/containing/SAFE/directories/
         ├── make_network_data_pred.py
         ├── metrics.py
         ├── MFB.py
-        ├── script_utils.py
-        └── visualizer.py
+        └── script_utils.py
 ```
 

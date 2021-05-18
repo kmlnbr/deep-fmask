@@ -1,13 +1,13 @@
-"""
-This script is used to make prediction from the trained model. The script processes multiple
-sub-scenes stored as h5 files and the predictions from each sub-scene (h5 file) is stitched together to
-generate the full scene prediction in 20m resolution. 
-"""
+"""This script is used to make prediction from the trained model. The script
+processes multiple sub-scenes stored as h5 files and the predictions from each
+sub-scene (h5 file) is stitched together to generate the full scene prediction in
+20m resolution. """
 
 import argparse
 import logging
 import os
 import glob
+import sys
 
 from tqdm import tqdm
 import numpy as np
@@ -37,15 +37,8 @@ def get_args(argv=None):
     parser.add_argument('-ep', '--model_epoch', type=int, default=0,
                         help='Epoch of the trained model (Starting from 1). '
                              'Defaults to best model')
-    parser.add_argument('-st', '--stage', type=int, default=0,
-                        help='Training stage')
     parser.add_argument('-p', '--pred_path', help='folder containing safe file',
                         default=PRED_PATH)
-    parser.add_argument('--full', dest='full', action='store_true', default=False,
-                        help='Run full network (last stage)')
-    parser.add_argument('--just_stats', dest='run', action='store_false',
-                        default=True,
-                        help='Just print stats without running again')
 
     # Hardware
     parser.add_argument('-gpu', '--gpu_id', type=int, nargs='+', default=[0],
@@ -82,36 +75,44 @@ if __name__ == '__main__':
         make_patch(new_safe_folders, mode='predict')
     file_count = len(H5_folder_name)
 
-    if args.run:
-        for file_idx, H5_folder in enumerate(H5_folder_name):
-            logger.info("Predicting {}".format(H5_folder))
-            test_loader = setup_data(path=H5_folder, mode='predict')
-            loader_itr = tqdm(test_loader,
-                              total=int(len(test_loader)),
-                              leave=False,
-                              desc='Predict {}/{}'.format(file_idx + 1, file_count))
 
-            for batch, network_input in enumerate(loader_itr):
-                model.valid_step(network_input, mode='predict')
-            output_folder = glob.glob(os.path.join(H5_folder[:-3], '**/*B02.jp2'),
-                                      recursive=True)
+    for file_idx, H5_folder in enumerate(H5_folder_name):
+        logger.info("Predicting {}".format(H5_folder))
+        test_loader = setup_data(path=H5_folder, mode='predict')
+        loader_itr = tqdm(test_loader,
+                          total=int(len(test_loader)),
+                          leave=False,
+                          desc='Predict {}/{}'.format(file_idx + 1, file_count))
 
-            img_path = os.path.dirname(output_folder[0]) if output_folder else None
+        for batch, network_input in enumerate(loader_itr):
+            model.valid_step(network_input, mode='predict')
+        output_folder = glob.glob(os.path.join(H5_folder[:-3], '**/*B02.jp2'),
+                                  recursive=True)
 
-            join_files(H5_folder, output=img_path, exp=args.exp_name)
+        img_path = os.path.dirname(output_folder[0]) if output_folder else None
 
+        join_files(H5_folder, output=img_path, exp=args.exp_name)
+
+    logger.info('Prediction Complete')
+    #################################################################################
+
+    # Printing metrics when labels are available
     np.set_printoptions(suppress=True, precision=3)
 
     CONF_FMASK_FULL = torch.zeros((6, 6), dtype=torch.long)
     CONF_SEN2COR_FULL = torch.zeros((6, 6), dtype=torch.long)
     CONF_PRED_FULL = torch.zeros((6, 6), dtype=torch.long)
-    logger.info('Prediction Complete')
+
     for safe_file in safe_files:
         conf_fmask, conf_sen2cor, conf_labels = get_full_stats(safe_file,
                                                                args.exp_name)
         CONF_FMASK_FULL += conf_fmask
         CONF_SEN2COR_FULL += conf_sen2cor
         CONF_PRED_FULL += conf_labels
+
+    if torch.all(CONF_PRED_FULL ==0):
+        logger.info('Metrics not calculated because true label file not found.')
+        sys.exit(0)
 
     metrics = []
     for matrix in [CONF_FMASK_FULL, CONF_SEN2COR_FULL, CONF_PRED_FULL]:
