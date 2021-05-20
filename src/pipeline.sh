@@ -3,7 +3,7 @@
 ## This script implements the 4 stage self-training pipeline.
 
 
-# Exit scrpt if any command fails.
+# Exit script if any command fails.
 set -e
 
 ## Pipeline Arguments

@@ -82,7 +82,7 @@ class Experiment:
         self._make_folders()
 
     def get_trained_model_info(self):
-        """Load the model using the model_epoch arguement"""
+        """Load the model using the model_epoch argument"""
         epoch = self.config['model_epoch']
         trained_model_path = os.path.join(self.model_folder,
                                           'model_{}.pth'.format(epoch))

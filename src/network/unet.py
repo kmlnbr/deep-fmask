@@ -30,8 +30,7 @@ class DoubleConv(nn.Module):
             self.dropout = nn.Identity()
 
     def forward(self, x):
-        """ Forward pass
-        """
+        """ Forward pass"""
 
         x = self.bn1(F.relu(self.conv1(x)))
 
@@ -71,8 +70,9 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     """
     Decoder module of the UNet. The module follows the following sequence
-    1. Upconvolution is performed on output from previous layer.
-    2. This upconv output is concatented with output from encoder of same spatial resolution
+    1. Up-convolution is performed on output from previous layer.
+    2. This Up-convolution output is concatenated with output from encoder of same
+       spatial resolution
     3. This output is passed to the double conv module as input.
     """
 
@@ -95,7 +95,7 @@ class Decoder(nn.Module):
         """ Forward pass
         Arguments:
             from_down: tensor from the encoder pathway
-            from_up: upconv'd tensor from the decoder pathway
+            from_up: upconv output tensor from the decoder
         """
         from_up = self.upconv(from_up)
         diff = from_down.size()[3] - from_up.size()[3]

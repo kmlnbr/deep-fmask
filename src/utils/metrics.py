@@ -34,15 +34,15 @@ def read_tif(safe_folder, name, height, width):
 
 def calculate_accuracy(predicted_labels, true_labels, mode):
     mat = (predicted_labels == true_labels) * 1.0
-    deno = torch.numel(mat)
-    acc = torch.sum(mat) / deno
+    denominator = torch.numel(mat)
+    acc = torch.sum(mat) / denominator
     # When mode is not train, we exclude class 0 from the accuracy calculation
     # because in validation/test mode, we use sparsely labelled data where
     # unlabelled data is given class 0.
     if mode != 'train':
-        non_zero_lables = true_labels != 0
-        mat = mat * non_zero_lables
-        deno = torch.sum(non_zero_lables)
+        non_zero_labels = true_labels != 0
+        mat = mat * non_zero_labels
+        denominator = torch.sum(non_zero_labels)
 
         acc = torch.sum(mat)
 

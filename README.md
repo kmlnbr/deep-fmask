@@ -53,7 +53,7 @@ python train.py --help
 #### Self- Training Mode
 - The complete training pipeline 
   consists of iterative training and label generation. The pipeline.sh implements a 4 stage training pipeline.
-  The experiment name is the prefix used for each model. For example, if we use 
+  The experiment name is the prefix used for each model. For example, 
   if we set the experiment name as exp1, the model name for the stage 0 will be 
   exp1_stage0.
 - In order to train an experiment called `exp1`:

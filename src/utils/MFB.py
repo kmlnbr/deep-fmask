@@ -44,7 +44,7 @@ def calculate_MFB_stage(file_list, stage):
     label_stats_df = pd.read_csv(label_stats_file)
 
     # Obtain frequencies for files from filename_list and store the sum of
-    # frequcencies for each class.
+    # frequencies for each class.
     stage_stats = label_stats_df[label_stats_df['FILENAME'].isin(filename_list)]
     stage_freq = np.array([stage_stats['NONE_F'].sum(),
                            stage_stats['CLEAR_F'].sum(),

@@ -188,7 +188,7 @@ class Model:
     @staticmethod
     def encode_label(out, label_gen=False, threshold=0.4):
         """
-        Converts the softmax input into pixelwise class predictions.
+        Converts the softmax input into pixel-wise class predictions.
 
         In case of new data generation (i.e. label_gen=True), prediction are stored
         only pixel positions where the prediction confidence is greater than the

@@ -2,22 +2,22 @@
 Sentinel-2 input from the SAFE folder into sub-scenes stored as h5 files containing
 the 13 spectral bands as well as the labels (when available). """
 
+import argparse
 import glob
+import logging
 import os
 import tempfile
+from itertools import product
 
+import cv2
+import h5py
 import numpy as np
 import rasterio
-import cv2
-import argparse
-from itertools import product
-import logging
 
-from utils.dir_paths import TRAIN_SAFE_PATH, VALID_SAFE_PATH
 from utils.dataset_stats import main_csv
+from utils.dir_paths import TRAIN_SAFE_PATH, VALID_SAFE_PATH
 
 logger = logging.getLogger('__name__')
-import h5py
 
 
 def setup_logger():
@@ -35,11 +35,11 @@ def setup_logger():
 NETWORK_INPUT_SIZE = 256
 border_width = 1
 
-# Effective sub-scene size in 20m resolution by substracting the border width on
+# Effective sub-scene size in 20m resolution by subtracting the border width on
 # both sides.
-SIZE_20M= NETWORK_INPUT_SIZE - (border_width*2)
+SIZE_20M = NETWORK_INPUT_SIZE - (border_width * 2)
 
-SIZE_10M = 2*SIZE_20M
+SIZE_10M = 2 * SIZE_20M
 
 # There are 10980 pixels in the 10m resolution image.
 TILES_PER_ROW = np.ceil(10980 / SIZE_10M).astype(int)
@@ -60,18 +60,17 @@ def get_args(argv=None):
     return parser.parse_args(argv)
 
 
-def generate_out_filename(img_path, mode, format='tif'):
-    parent_path, image = img_path.replace('jp2', format).replace('raw', mode).split(
+def generate_out_filename(img_path, mode, file_format='tif'):
+    parent_path, image = img_path.replace('jp2', file_format).replace('raw', mode).split(
         '.SAFE')
     out_filename = '{}_{}'.format(parent_path, image.split('_')[-1])
     return out_filename
 
 
-
-
 def get_img_paths(safe_path, mode):
-    """Returns a sorted list of image files for a given safe folder path. The FMASK will be included and the true
-    color image will be excluded from the list."""
+    """Returns a sorted list of image files for a given safe folder path. The
+    FMASK will be included and the true color image will be excluded from the
+    list. """
 
     # get all Sentinel2 filenames
     img_paths = sorted(glob.glob(os.path.join(safe_path, '**', 'IMG_DATA', '*.jp2'),
@@ -80,17 +79,19 @@ def get_img_paths(safe_path, mode):
     img_paths = list(filter(lambda x: not x.endswith('TCI.jp2'), img_paths))
     # get fmask
     fmask_path = glob.glob(os.path.join(safe_path, '**', 'IMG_DATA', '*FMASK.tif'),
-                           recursive=True) # F4MASK
+                           recursive=True)  # F4MASK
     # raise error if fmask not found in train mode
     if len(fmask_path) == 1:
         img_paths.extend(fmask_path)
     elif mode == 'train':
         raise FileNotFoundError('FMask file not found in format *FMASK.tif')
     else:
-        # if fmask is not available in test or predict, we create a zero array instead
-        logger.warning('No F4MASK file found for {}'.format(os.path.basename(safe_path)))
+        # if fmask is not available in test or predict, we create a zero array
+        # instead
+        logger.warning(
+            'No F4MASK file found for {}'.format(os.path.basename(safe_path)))
         nofile_path = 'NOFILE' + os.path.basename(img_paths[0]).replace('B01.jp2',
-                                                                        'FMASK.tif') # F4MASK
+                                                                        'FMASK.tif')
         img_paths.append(nofile_path)
 
     # For validation mode check if true label is available and get its path
@@ -109,14 +110,12 @@ def get_img_paths(safe_path, mode):
 
 def resize_window(new_size, window_data, window_transform,
                   label_interpolation=False):
-
     """Resizes the windows from different bands. Since bands come in multiple
     resolutions they need to be resized. Cubic interpolation is used for resizing
     the bands. Nearest neighbour interpolation is used for labels because
     cubic interpolation will lead to floating point labels which cannot be used
     for training or validation.
     """
-
 
     old = window_data.shape[0]
     if label_interpolation:
@@ -141,7 +140,6 @@ def save_as_gtiff(window_data, metadata, out_filename):
         dst.write(window_data, 1)
 
 
-
 def fix_window_size(window_data, window_transform, label_interpolation=False):
     if window_data.shape[0] != RESCALE_SIZE:
         window_data, window_transform = resize_window(RESCALE_SIZE, window_data,
@@ -151,7 +149,7 @@ def fix_window_size(window_data, window_transform, label_interpolation=False):
     return window_data, window_transform
 
 
-def split_img(img_path, temp_dirpath,overlap):
+def split_img(img_path, temp_dirpath, overlap):
     if img_path.startswith('NOFILE'):
         window_data = np.zeros((RESCALE_SIZE, RESCALE_SIZE), dtype=np.uint16)
         for n_patch in range(TILES_PER_ROW ** 2):
@@ -217,7 +215,6 @@ def make_patch(safe_file_list, mode):
             overlap = False
         os.makedirs(out_folder_path, exist_ok=True)
 
-
         metadata_dict = {}
 
         B05_path = [pth for pth in img_paths if 'B05' in pth][0]
@@ -232,7 +229,7 @@ def make_patch(safe_file_list, mode):
         del B05_band
         with tempfile.TemporaryDirectory() as td:
             for n_i, img_path in enumerate(img_paths):
-                split_img(img_path, td,overlap)
+                split_img(img_path, td, overlap)
             logger.debug("Completed split")
             for n_patch in range(TILES_PER_ROW ** 2):
                 spectral_data = np.zeros(
@@ -248,7 +245,7 @@ def make_patch(safe_file_list, mode):
 
                     labels_file = {'test': 'LABELS.tif', 'train': 'FMASK.tif'}
 
-                    if (mode in labels_file and labels_file[mode] in split_img_path):
+                    if mode in labels_file and labels_file[mode] in split_img_path:
                         if np.all(window == 0):
                             out_file_name = safe_filename.replace('.SAFE',
                                                                   '_PATCH{}.h5.NIL'.format(
@@ -258,6 +255,7 @@ def make_patch(safe_file_list, mode):
                     with h5py.File(out_file_path, "w") as hf:
                         hf.create_dataset('data', data=spectral_data, )
     main_csv(mode=mode, path=out_folder_path)
+
 
 if __name__ == '__main__':
 

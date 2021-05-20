@@ -24,7 +24,6 @@ CSV_HEADERS['valid_f1_class.csv'] = header_valid
 CSV_HEADERS['valid_iou_class.csv'] = header_valid
 CSV_HEADERS['pred_class.csv'] = header_valid
 
-CSV_HEADERS['hollstein_dataset.csv'] = ['Lat', 'Longitude', 'Class']
 
 
 def _create_csv(csv_path, header):
