@@ -83,6 +83,9 @@ python predict.py -e exp1_stage3 -p /path/containing/SAFE/directories/
 | 4 | Snow |
 | 5 | Water |
 ---
+- The `predict.py` can be used to compare the predictions with ground truth 
+labels (if available). Store the ground truth label file must be stored with 
+*FMASK.tif postfix and the classes must be labeled as shown in the table above.
 
 ### Directory Structure
 ```bash
