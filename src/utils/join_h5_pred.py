@@ -2,16 +2,13 @@ import logging
 from itertools import product
 from datetime import datetime
 
-from matplotlib import pyplot as plt
 import rasterio
 import numpy as np
 import h5py
 import os,glob
 import argparse
-import cv2
 from rasterio import windows
 
-from utils.dir_paths import EXP_DATA_PATH
 
 logger = logging.getLogger('__name__')
 

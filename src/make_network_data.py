@@ -13,6 +13,7 @@ import cv2
 import h5py
 import numpy as np
 import rasterio
+import inspect
 
 from utils.dataset_stats import main_csv
 from utils.dir_paths import TRAIN_SAFE_PATH, VALID_SAFE_PATH
@@ -51,7 +52,8 @@ RESCALE_SIZE = int(SIZE_10M / 2)
 def get_args(argv=None):
     """Parses the arguments entered by the user."""
 
-    parser = argparse.ArgumentParser(description="Splits SAFE files into h5 files ")
+    parser = argparse.ArgumentParser(description="Splits SAFE files into h5 "
+                                                 "files ")
     parser.add_argument('-p', '--path', help='Path of containing safe folders',
                         default=None)
     parser.add_argument('-m', '--mode', default='train',
@@ -60,14 +62,9 @@ def get_args(argv=None):
     return parser.parse_args(argv)
 
 
-def generate_out_filename(img_path, mode, file_format='tif'):
-    parent_path, image = img_path.replace('jp2', file_format).replace('raw', mode).split(
-        '.SAFE')
-    out_filename = '{}_{}'.format(parent_path, image.split('_')[-1])
-    return out_filename
-
 
 def get_img_paths(safe_path, mode):
+    print( inspect.currentframe().f_code.co_name)
     """Returns a sorted list of image files for a given safe folder path. The
     FMASK will be included and the true color image will be excluded from the
     list. """
@@ -132,12 +129,6 @@ def resize_window(new_size, window_data, window_transform,
     )
     return window_data, window_transform
 
-
-def save_as_gtiff(window_data, metadata, out_filename):
-    metadata.update({'driver': 'GTiff'})
-
-    with rasterio.open(out_filename, 'w', **metadata) as dst:
-        dst.write(window_data, 1)
 
 
 def fix_window_size(window_data, window_transform, label_interpolation=False):
@@ -254,6 +245,7 @@ def make_patch(safe_file_list, mode):
                     out_file_path = os.path.join(out_folder_path, out_file_name)
                     with h5py.File(out_file_path, "w") as hf:
                         hf.create_dataset('data', data=spectral_data, )
+
     main_csv(mode=mode, path=out_folder_path)
 
 

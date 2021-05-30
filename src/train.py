@@ -30,7 +30,7 @@ def get_args(argv=None):
                              'supervised learning using F-Mask labels')
     parser.add_argument('-st', '--stage', type=int, default=0,
                         help='Training stage of the self-training pipeline')
-    parser.add_argument('-lr', '--learning_rate', type=float, default=0.001,
+    parser.add_argument('-lr', '--learning_rate', type=float, default=0.000001,
                         help='Learning Rate')
     parser.add_argument('--no_dropout', dest='dropout', action='store_false', default=True,
                         help='Flag used to avoid dropout usage in the network')
@@ -43,8 +43,8 @@ def get_args(argv=None):
                         help='Flag used to avoid use of augmentation in training data')
     parser.add_argument('--reset_stage_data', dest='reset_stage_data', action='store_true',
                         default=False, help='Flag used reassign h5 files for each '
-                                            'stage of self training pipeline')
-    parser.add_argument('-ip', '--inp_mode', default='all',
+                                            'stage of self-training pipeline')
+    parser.add_argument('-ip', '--inp_mode', default='swirndsi',
                         help='Bands used as input to the network')
     parser.add_argument('--seed', type=int, default=None,
                         help='Random seed')

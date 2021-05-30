@@ -17,7 +17,7 @@ from dataset.patch_dataset import setup_data
 from network.model import Model
 from utils.experiment import Experiment
 from utils.dir_paths import PRED_PATH
-from utils.make_network_data_pred import make_patch
+from make_network_data_pred import make_patch
 from utils.metrics import get_full_stats, get_metrics
 from utils.join_h5_pred import join_files
 from utils.csv_logger import pred_csv
