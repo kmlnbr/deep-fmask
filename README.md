@@ -1,6 +1,7 @@
 # Deep F-Mask for Cloud, Shadow and Snow detection in Sentinel 2 Imagery
-This repository contains the code based on the methods described in the paper 'Self-Trained Cloud, Cloud Shadow and Snow Masking Model
-for Sentinel-2 Images in Polar Regions'.
+This repository contains the code based on the methods described in the paper 
+'Self-Trained Cloud, Cloud Shadow and Snow Masking Model for Sentinel-2 Images in 
+Polar Regions'.
 
 Paper Link: 
 
@@ -84,8 +85,9 @@ python predict.py -e exp1_stage3 -p /path/containing/SAFE/directories/
 | 5 | Water |
 ---
 - The `predict.py` can be used to compare the predictions with ground truth 
-labels (if available). Store the ground truth label file must be stored with 
-*FMASK.tif postfix and the classes must be labeled as shown in the table above.
+labels (if available). The ground truth label file must be stored with 
+*LABELS.tif postfix in the IMG_DATA directory of each SAFE file, and the classes must 
+  be labeled as shown in the table above.
 
 ### Directory Structure
 ```bash
