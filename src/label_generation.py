@@ -1,6 +1,6 @@
 """This script is used to perform the pseudo label generation from a trained
-model. These labels will be used for training the model in the subsequent stage of
-the self-training pipeline. """
+model. These labels will be used for training the model in the subsequent
+stage of the self-training pipeline. """
 
 import argparse
 import logging
@@ -28,8 +28,9 @@ def get_args(argv=None):
                         help='Training stage for which labelling is done')
     parser.add_argument('-ep', '--model_epoch', type=int, default=0,
                         help='Epoch of the trained model to be used for label '
-                             'generation. Note: Epochs indexing starts from 1 and '
-                             'the default value (0) corresponds to the best model')
+                             'generation. Note: Epochs indexing starts from 1 '
+                             'and the default value (0) corresponds to the '
+                             'best model')
 
     # Hardware
     parser.add_argument('-gpu', '--gpu_id', type=int, nargs='+', default=[0],

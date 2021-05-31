@@ -1,7 +1,7 @@
 """Functions used for generating the label
 statistics csv files to be used during the training. """
 
-import os, sys
+import os
 import glob
 import numpy as np
 import csv
@@ -9,7 +9,7 @@ import h5py
 import argparse
 import logging
 from sklearn.metrics import confusion_matrix
-logger = logging.getLogger('__name__')
+logger = logging.getLogger(__name__)
 
 
 def setup_logger():
@@ -39,8 +39,8 @@ np.set_printoptions(precision=4, suppress=True)
 def count_label(label_mask):
     uniques, counts = np.unique(label_mask, return_counts=True)
     label_dict = {i: 0 for i in range(6)}
-    for unique, countr in zip(uniques, counts):
-        label_dict[unique] = countr
+    for unique, label_count in zip(uniques, counts):
+        label_dict[unique] = label_count
     return label_dict
 
 

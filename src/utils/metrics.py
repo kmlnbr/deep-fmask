@@ -1,11 +1,13 @@
-import torch
-import numpy as np
-from itertools import product
-import os, sys
 import glob
-import rasterio
-
 import logging
+import os
+import sys
+from itertools import product
+
+import numpy as np
+import rasterio
+import torch
+from utils.csv_logger import pred_csv
 from utils.script_utils import print_epoch_info, print_conf_matrix
 
 logger = logging.getLogger(__name__)
@@ -48,9 +50,6 @@ def calculate_accuracy(predicted_labels, true_labels, mode):
 
     return acc
 
-
-def _flatten_matrix(torch_tensor):
-    return torch_tensor.detach().cpu().numpy().reshape(-1, )
 
 
 def calculate_confusion_matrix(predicted_labels, true_labels, mode):
@@ -115,6 +114,30 @@ def get_full_stats(safe_folder, exp_name):
     conf_labels = calculate_confusion_matrix(prediction, labels, mode='predict')
 
     return conf_fmask, conf_sen2cor, conf_labels
+
+def print_prediction_metrics(safe_files,exp_name):
+    np.set_printoptions(suppress=True, precision=3)
+
+    CONF_FMASK_FULL = torch.zeros((6, 6), dtype=torch.long)
+    CONF_SEN2COR_FULL = torch.zeros((6, 6), dtype=torch.long)
+    CONF_PRED_FULL = torch.zeros((6, 6), dtype=torch.long)
+
+    for safe_file in safe_files:
+        conf_fmask, conf_sen2cor, conf_labels = get_full_stats(safe_file,
+                                                               exp_name)
+        CONF_FMASK_FULL += conf_fmask
+        CONF_SEN2COR_FULL += conf_sen2cor
+        CONF_PRED_FULL += conf_labels
+
+    if torch.all(CONF_PRED_FULL == 0):
+        logger.info('Metrics not calculated because true label file not found.')
+        sys.exit(0)
+
+    metrics = []
+    for matrix in [CONF_FMASK_FULL, CONF_SEN2COR_FULL, CONF_PRED_FULL]:
+        metrics.append(get_metrics(matrix))
+
+    pred_csv(metrics)
 
 
 def get_metrics(conf_matrix):

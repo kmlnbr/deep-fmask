@@ -120,8 +120,8 @@ labels (if available). The ground truth label file must be stored with
         ├── dir_paths.py
         ├── experiment.py
         ├── __init__.py
-        ├── join_h5_pred.py
-        ├── make_network_data_pred.py
+        ├── join_predictions.py
+        ├── split_scene.py
         ├── metrics.py
         ├── MFB.py
         └── script_utils.py

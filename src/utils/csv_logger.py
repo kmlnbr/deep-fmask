@@ -25,7 +25,6 @@ CSV_HEADERS['valid_iou_class.csv'] = header_valid
 CSV_HEADERS['pred_class.csv'] = header_valid
 
 
-
 def _create_csv(csv_path, header):
     """Creates csv file with header"""
     with open(csv_path, mode='w') as file:
@@ -106,22 +105,26 @@ def pred_csv(metrics_values, do_print=True):
             row_entry = [metric]
             for i in class_metrics_sorted:
                 # i is in the format classname_metric
-                if metric in i: row_entry.append('{:7.4}'.format(model_metrics[i]))
+                if metric in i: row_entry.append(
+                    '{:7.4}'.format(model_metrics[i]))
             filename = 'pred_class.csv'
             add_to_csv(row_entry, td, filename)
         if do_print:
             print('Accuracy'.ljust(
                 10) + '\t\t FMask {:6.4}\t Sen2Cor {:6.4}\t OurModel {:6.4}'.format(
-                metrics_values[0]['acc'], metrics_values[1]['acc'], metrics_values[2]['acc']))
+                metrics_values[0]['acc'], metrics_values[1]['acc'],
+                metrics_values[2]['acc']))
             print('mIOU'.ljust(
                 10) + '\t\t FMask {:6.4}\t Sen2Cor {:6.4}\t OurModel {:6.4}'.format(
-                metrics_values[0]['mIOU'], metrics_values[1]['mIOU'], metrics_values[2]['mIOU']))
+                metrics_values[0]['mIOU'], metrics_values[1]['mIOU'],
+                metrics_values[2]['mIOU']))
             print('+' * 75)
 
             print_pred_csv_metrics(td, filename)
 
 
-def make_overall_statistics_csv(train_metrics, valid_metrics, class_metrics_dict,
+def make_overall_statistics_csv(train_metrics, valid_metrics,
+                                class_metrics_dict,
                                 epoch, log_path):
     """Generate all csv files from the validation metrics at the end of each
     training epoch. """

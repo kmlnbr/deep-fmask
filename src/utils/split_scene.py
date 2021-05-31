@@ -3,17 +3,18 @@ import glob
 import logging
 import os
 import random
-import tempfile
+from tempfile import TemporaryDirectory
 
-import cv2
 import h5py
 import numpy as np
-import rasterio
+from cv2 import resize, INTER_NEAREST, INTER_CUBIC
+from rasterio import open as raster_open
+from rasterio import windows
 
 from utils.dataset_stats import main_csv
 from utils.dir_paths import TRAIN_SAFE_PATH, VALID_SAFE_PATH, PRED_PATH
 
-logger = logging.getLogger('__name__')
+logger = logging.getLogger(__name__)
 
 
 def setup_logger():
@@ -21,19 +22,6 @@ def setup_logger():
         level=logging.INFO,
         format='%(asctime)s %(message)s',
     )
-
-
-def get_data_size(network_input_size=256, border_width=1):
-    # Effective sub-scene size in 20m resolution by subtracting the border width on
-    # both sides.
-    size_20m = network_input_size - (border_width * 2)
-
-    size_10m = 2 * size_20m
-
-    # To rescale to 20m resolution set Rescale size to half of window size.
-    rescale_size = int(size_10m / 2)
-
-    return rescale_size, size_10m
 
 
 def get_args(argv=None):
@@ -47,6 +35,19 @@ def get_args(argv=None):
                         help='mode for data use')
 
     return parser.parse_args(argv)
+
+
+def get_data_size(network_input_size=256, border_width=1):
+    # Effective sub-scene size in 20m resolution by subtracting the border
+    # width on both sides.
+    size_20m = network_input_size - (border_width * 2)
+
+    size_10m = 2 * size_20m
+
+    # To rescale to 20m resolution set Rescale size to half of window size.
+    rescale_size = int(size_10m / 2)
+
+    return rescale_size, size_10m
 
 
 def get_img_paths(safe_path, mode):
@@ -70,7 +71,8 @@ def get_img_paths(safe_path, mode):
     elif mode == 'train':
         raise FileNotFoundError('FMask file not found in format *FMASK.tif')
     else:
-        # if fmask is not available in test or predict, we create a zero array instead
+        # if fmask is not available in test or predict, we create a zero
+        # array instead
         logger.warning(
             'No FMASK file found for {}'.format(os.path.basename(safe_path)))
         nofile_path = 'NOFILE' + os.path.basename(img_paths[0]).replace(
@@ -87,31 +89,30 @@ def get_img_paths(safe_path, mode):
         if len(label_path) == 1:
             img_paths.extend(label_path)
         else:
-            # raise FileNotFoundError('Label file not found in format *LABELS.tif')
             logger.warning(
                 'No labelfile found for {}'.format(os.path.basename(safe_path)))
             nofile_path = 'NOFILE' + os.path.basename(img_paths[0]).replace(
                 'B01.jp2',
                 'LABELS.tif')
+            img_paths.append(nofile_path)
 
     return img_paths
 
 
-def split_img(img_path, temp_dirpath, overlap=0):
-    rescale_size, size_10m = get_data_size()
+def split_img(img_path, temp_dirpath, overlap=0, network_input_size=256):
+    rescale_size, size_10m = get_data_size(network_input_size)
     if img_path.startswith('NOFILE'):
 
         n_tiles = len(glob.glob(temp_dirpath + '/*_B05.jp2_PATCH*'))
         window_data = np.zeros((rescale_size, rescale_size), dtype=np.uint16)
         for n_patch in range(n_tiles):
             out_path = os.path.join(temp_dirpath,
-                                    img_path.replace('NOFILE',
-                                                     '') + '_B05.jp2_PATCH{}'.format(
-                                        n_patch))
+                                    img_path.replace('NOFILE', '')
+                                    + '_B05.jp2_PATCH{}'.format(n_patch))
             np.save(out_path, window_data)
         return None
     else:
-        band = rasterio.open(img_path)
+        band = raster_open(img_path)
         window_length = size_10m * 10
         window_length1 = size_10m * (10 - overlap)
 
@@ -132,15 +133,15 @@ def split_img(img_path, temp_dirpath, overlap=0):
             top = bottom + window_length
             right = left + window_length
 
-            polygon_window = rasterio.windows.from_bounds(left=left,
-                                                          bottom=bottom,
-                                                          right=right,
-                                                          top=top,
-                                                          transform=band.transform)
+            polygon_window = windows.from_bounds(left=left,
+                                                 bottom=bottom,
+                                                 right=right,
+                                                 top=top,
+                                                 transform=band.transform)
 
             window_data = band.read(1, window=polygon_window)
-            window_transform = rasterio.windows.transform(polygon_window,
-                                                          band.transform)
+            window_transform = windows.transform(polygon_window,
+                                                 band.transform)
 
             if patch_meta is not None:
                 meta = {}
@@ -181,11 +182,11 @@ def resize_window(new_size, window_data, window_transform,
                   label_interpolation=False):
     old = window_data.shape[0]
     if label_interpolation:
-        interpolation = cv2.INTER_NEAREST
+        interpolation = INTER_NEAREST
     else:
-        interpolation = cv2.INTER_CUBIC
-    window_data = cv2.resize(window_data, dsize=(new_size, new_size),
-                             interpolation=interpolation)
+        interpolation = INTER_CUBIC
+    window_data = resize(window_data, dsize=(new_size, new_size),
+                         interpolation=interpolation)
 
     # scale image transform
     window_transform = window_transform * window_transform.scale(
@@ -206,14 +207,14 @@ def fix_window_size(window_data, window_transform, rescale_size,
     return window_data, window_transform
 
 
-def make_patch(safe_file_list, mode):
-    rescale_size, size_10m = get_data_size()
+def make_patch(safe_file_list, mode, network_input_size=256):
+    rescale_size, size_10m = get_data_size(network_input_size)
     total_files = len(safe_file_list)
     for file_n, safe_path in enumerate(safe_file_list):
 
-        logger.info('[{}/{}] {}'.format(file_n + 1,
-                                        total_files,
-                                        os.path.basename(safe_path)))
+        logger.info('[{}/{}] Splitting {}'.format(file_n + 1,
+                                                  total_files,
+                                                  os.path.basename(safe_path)))
 
         img_paths = get_img_paths(safe_path, mode)
         if mode == 'predict':
@@ -225,12 +226,11 @@ def make_patch(safe_file_list, mode):
             out_folder_path = parent_path + '_H5'
             overlap = 0
         os.makedirs(out_folder_path, exist_ok=True)
-        # get_true_color_img(img_paths,mode)
 
         metadata_dict = {}
 
         B05_path = [pth for pth in img_paths if 'B05' in pth][0]
-        B05_band = rasterio.open(B05_path)
+        B05_band = raster_open(B05_path)
         metadata = B05_band.meta.copy()
         metadata.update({
             'driver': 'GTiff',
@@ -240,12 +240,12 @@ def make_patch(safe_file_list, mode):
         metadata_dict['parent'] = metadata
         del B05_band
 
-        with tempfile.TemporaryDirectory() as td:
+        with TemporaryDirectory() as td:
             for n_i, img_path in enumerate(img_paths):
-                patch_meta = split_img(img_path, td, overlap)
+                patch_meta = split_img(img_path, td, overlap,
+                                       network_input_size)
                 if patch_meta:
                     metadata_dict = {**metadata_dict, **patch_meta}
-            logger.info('Completed split')
             total_tiles = len(metadata_dict) - 1
             for n_patch in range(total_tiles):
                 spectral_data = np.zeros(
@@ -267,9 +267,7 @@ def make_patch(safe_file_list, mode):
                     if (mode in labels_file and labels_file[
                         mode] in split_img_path):
                         if np.all(window == 0):
-                            out_file_name = safe_filename.replace('.SAFE',
-                                                                  '_PATCH{}.h5.NIL'.format(
-                                                                      n_patch))
+                            out_file_name += '.NIL'
                 if not out_file_name.endswith('h5.NIL'):
                     out_file_path = os.path.join(out_folder_path, out_file_name)
                     with h5py.File(out_file_path, 'w') as hf:
