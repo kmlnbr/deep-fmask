@@ -78,7 +78,7 @@ python predict.py -e exp1_stage3 -p /path/containing/SAFE/directories/
 | Label | Class |
 |:---:|:---:|
 | 0 | No-data |
-| 1 | Clear Land |
+| 1 | Clear-Sky Land |
 | 2 | Cloud |
 | 3 | Cloud Shadow |
 | 4 | Snow |
