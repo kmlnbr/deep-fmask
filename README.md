@@ -23,7 +23,7 @@ conda env create --name DFMask --file environment.yml
 
 ### Training Dataset Setup
 - Go to the exp_data directory
-- Install the .SAFE files provided in the *train_filename.txt*, *test_filename.txt* 
+- Download the .SAFE files provided in the *train_filename.txt*, *test_filename.txt* 
   and *validation_filename.txt*  from [Copernicus Datahub](https://scihub.copernicus.eu/dhus/#/home)
 and save them in TRAIN, TEST and VALIDATION directories respectively. 
 - For each file run the Fmask 4 algorithm and save the corresponding Fmask output in 
